@@ -981,6 +981,8 @@ function gpsBanner(state){
   fix.onclick = () => { fix.textContent = 'Locating…'; useGps(); };
   const pick = $('gpsPick');
   if(pick){ pick.hidden = false; pick.onclick = beginPickStart; }
+  const hide = $('gpsHide');
+  if(hide) hide.onclick = () => { bar.hidden = true; };
 }
 function checkGpsPermission(){
   if(!navigator.geolocation){ gpsBanner('unsupported'); return; }
