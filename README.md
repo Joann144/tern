@@ -13,11 +13,18 @@ Built on OpenStreetMap data through open services, with optional live traffic fr
 | Reverse geocoding (click the map) | Photon | no |
 | Driving routes with turn-by-turn | OSRM | no |
 | Walking and cycling routes | Valhalla | no |
-| Backup router if the primary fails | Valhalla | no |
+| Public transport: bus, train, tram, ferry | Transitous (MOTIS) | no |
+| Side-by-side time for all four modes | all of the above, in parallel | no |
 | GPS position and follow mode | browser Geolocation | no |
 | Navigation HUD, ETA, distance, speed | computed locally | no |
 | Live traffic flow | TomTom raster flow tiles | yes |
 | Incidents and road closures | TomTom Incident Details v5 | yes |
+
+## The planner
+
+Both ends of the trip are editable: **From** defaults to your GPS position but can be any place, and **To** is whatever you search or tap on the map. Four mode tabs sit under the fields and each one shows its own travel time, computed in parallel the moment both ends are set, so you can see at a glance that driving is 14 minutes and transit is 33 before choosing.
+
+Transit itineraries show departure and arrival clock times, the line for each leg, walking connections, and the number of transfers. Coverage depends on the local agency publishing an open GTFS feed, which is good in much of Europe and patchy across the United States. Where there is no feed the Transit tab says so rather than failing silently.
 
 ## Running it
 
@@ -96,6 +103,7 @@ docs/index.html  the built, shippable file
 ## Known limits
 
 - No voice guidance
+- Transit coverage is only as good as the local open GTFS feed, and much of the United States has none
 - No business listings, opening hours or reviews. Search covers addresses and places only
 - No offline maps
 - No saved places or multi-stop routes
@@ -103,4 +111,4 @@ docs/index.html  the built, shippable file
 
 ## Attribution
 
-Map data © OpenStreetMap contributors (ODbL). Tiles by OpenFreeMap. Geocoding by Photon. Routing by OSRM and Valhalla. Traffic by TomTom. Rendering by MapLibre GL JS (BSD-3-Clause).
+Map data © OpenStreetMap contributors (ODbL). Tiles by OpenFreeMap. Geocoding by Photon. Routing by OSRM and Valhalla. Public transport routing by Transitous, a community-run MOTIS instance, used here under its non-commercial open-source terms. Traffic by TomTom. Rendering by MapLibre GL JS (BSD-3-Clause).

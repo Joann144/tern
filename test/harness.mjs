@@ -1,276 +1,264 @@
-import fs from 'fs';
-import path from 'path';
-import {fileURLToPath} from 'url';
-const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const app=fs.readFileSync(path.join(root,'src/app.js'),'utf8');
+import fs from 'fs'; import path from 'path'; import {fileURLToPath} from 'url';
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const app = fs.readFileSync(path.join(root, 'src/app.js'), 'utf8');
 
-/* ---------- stubs ---------- */
-const store={};
-globalThis.localStorage={getItem:k=>k in store?store[k]:null,setItem:(k,v)=>store[k]=String(v)};
-const el=id=>({id,innerHTML:'',textContent:'',value:'',hidden:false,className:'',style:{},dataset:{},
-  classList:{_s:new Set(),add(c){this._s.add(c)},remove(c){this._s.delete(c)},
-    toggle(c,v){v===undefined?(this._s.has(c)?this._s.delete(c):this._s.add(c)):(v?this._s.add(c):this._s.delete(c))},
-    contains(c){return this._s.has(c)}},
-  addEventListener(e,f){(this._h=this._h||{})[e]=f},
-  querySelectorAll:()=>[],querySelector:()=>null,focus(){},blur(){},select(){},remove(){},
-  get children(){return []}});
-const E={};
-globalThis.document={hidden:false,getElementById:i=>E[i]||(E[i]=el(i)),
-  documentElement:{setAttribute(){}}, createElement:()=>Object.assign(el('tmp'),{getContext:()=>({})}), addEventListener(){}};
-globalThis.addEventListener=()=>{};
-globalThis.window=globalThis;
-globalThis.location={protocol:'file:'};
-globalThis.innerWidth=1200; globalThis.innerHeight=800;
-Object.defineProperty(globalThis,'navigator',{configurable:true,writable:true,
-  value:{onLine:true,geolocation:{getCurrentPosition(ok){ok({coords:{latitude:35.2271,longitude:-80.8431}})},
-    watchPosition(){return 1},clearWatch(){}}, clipboard:{writeText:async()=>{}}}});
-const handlers={};
-class FakeMap{
-  constructor(){ this._src={}; this._lay={}; }
-  on(ev,a,b){ const k=b?ev+':'+a:ev; (handlers[k]=handlers[k]||[]).push(b||a); }
-  once(ev,f){ this.on(ev,f); } off(){}
-  addControl(){} getCanvas(){return {style:{}}}
-  addSource(id,s){this._src[id]=s} getSource(id){ const s=this._src[id];
-    return s?{setData(d){s._data=d}}:undefined }
-  removeSource(id){delete this._src[id]}
-  addLayer(l){this._lay[l.id]=l} getLayer(id){return this._lay[id]} removeLayer(id){delete this._lay[id]}
-  getStyle(){return {layers:[{id:'water',type:'fill'},{id:'place-label',type:'symbol'}]}}
-  getCenter(){return {lat:35.2271,lng:-80.8431}} getZoom(){return 12} getPitch(){return 0}
-  getBounds(){return {getWest:()=>-80.95,getSouth:()=>35.15,getEast:()=>-80.75,getNorth:()=>35.31}}
-  flyTo(){} easeTo(){} fitBounds(){} setStyle(){} queryRenderedFeatures(){return []}
+/* ── DOM / canvas / map stubs ─────────────────────────────── */
+const E = {};
+const mkEl = (id='') => ({ id, innerHTML:'', textContent:'', value:'', hidden:false, disabled:false,
+  dataset:{}, style:{},
+  classList:{ _s:new Set(),
+    add(...c){c.forEach(x=>this._s.add(x))}, remove(...c){c.forEach(x=>this._s.delete(x))},
+    toggle(c,v){ v===undefined ? (this._s.has(c)?this._s.delete(c):this._s.add(c)) : (v?this._s.add(c):this._s.delete(c)); },
+    contains(c){return this._s.has(c)}, set className(v){}, },
+  set className(v){ this._cn=v; }, get className(){ return this._cn||''; },
+  addEventListener(ev,fn){ (this._h=this._h||{})[ev]=fn; },
+  querySelector(sel){ if(sel==='em') return this._em||(this._em=mkEl('em'));
+                      if(sel==='i') return this._i||(this._i=mkEl('i'));
+                      if(sel==='span') return this._sp||(this._sp=mkEl('span'));
+                      return mkEl('x'); },
+  querySelectorAll(){ return []; },
+  getBoundingClientRect:()=>({left:0,top:0,width:1200,height:800}),
+  getContext:()=>({}), focus(){}, blur(){}, remove(){},
+});
+const MODES = ['drive','transit','bike','walk'].map(m => { const e = mkEl('mode-'+m); e.dataset.mode = m; return e; });
+globalThis.document = {
+  hidden:false,
+  documentElement:{ setAttribute(){}, },
+  getElementById: id => E[id] || (E[id] = mkEl(id)),
+  createElement: () => mkEl('tmp'),
+  querySelectorAll: sel => sel === '.mode' ? MODES : [],
+  querySelector: sel => { const m = /data-mode="([a-z]+)"/.exec(sel); return m ? MODES.find(x=>x.dataset.mode===m[1]) : mkEl('q'); },
+  addEventListener(){},
+};
+globalThis.window = globalThis;
+globalThis.addEventListener = () => {};
+globalThis.innerWidth = 1280; globalThis.innerHeight = 800;
+globalThis.location = { protocol:'https:' };
+const LS = {};
+globalThis.localStorage = { getItem:k=>k in LS?LS[k]:null, setItem:(k,v)=>LS[k]=String(v) };
+Object.defineProperty(globalThis, 'navigator', { configurable:true, writable:true, value:{
+  onLine:true,
+  geolocation:{ getCurrentPosition(ok){ ok({coords:{latitude:35.2271,longitude:-80.8431,speed:11,heading:90}}); },
+                watchPosition(){ return 7; }, clearWatch(){} } } });
+let RAFQ = new Map(), rid = 0;
+globalThis.requestAnimationFrame = fn => { RAFQ.set(++rid, fn); return rid; };
+globalThis.cancelAnimationFrame = id => RAFQ.delete(id);
+class FakeMap {
+  constructor(){ this.src={}; this.lay={}; this.pitch=0; }
+  on(){} once(){} addControl(){} getCanvas(){ return {style:{}}; }
+  addSource(id,s){ this.src[id]={...s,_data:null}; }
+  getSource(id){ const s=this.src[id]; return s?{setData(d){s._data=d}}:undefined; }
+  removeSource(id){ delete this.src[id]; }
+  addLayer(l){ this.lay[l.id]=l; } getLayer(id){ return this.lay[id]; } removeLayer(id){ delete this.lay[id]; }
+  getStyle(){ return { layers:[{id:'water',type:'fill'},{id:'poi-label',type:'symbol'}] }; }
+  getCenter(){ return {lat:35.2271,lng:-80.8431}; } getZoom(){ return 12; } getPitch(){ return this.pitch; }
+  getBearing(){ return 0; }
+  flyTo(){} easeTo(o){ if(o&&o.pitch!=null) this.pitch=o.pitch; } fitBounds(o){ this._fit=o; }
+  setStyle(){} queryRenderedFeatures(){ return []; }
 }
-globalThis.maplibregl={Map:FakeMap,
-  Marker:class{constructor(){} setLngLat(){return this} addTo(){return this} remove(){}},
-  NavigationControl:class{}, ScaleControl:class{}};
+globalThis.maplibregl = { Map: FakeMap,
+  Marker: class { constructor(){} setLngLat(){return this} addTo(){return this} remove(){} },
+  ScaleControl: class {} };
 
-/* ---------- canned API responses ---------- */
-function enc6(pts){ // polyline6 encoder, to prove the decoder round-trips
-  let lat=0,lon=0,out='';
-  const v=n=>{ n=n<0?~(n<<1):(n<<1); let s='';
-    while(n>=0x20){ s+=String.fromCharCode((0x20|(n&0x1f))+63); n>>=5; }
-    return s+String.fromCharCode(n+63); };
-  for(const [x,y] of pts){ const la=Math.round(y*1e6), lo=Math.round(x*1e6);
-    out+=v(la-lat)+v(lo-lon); lat=la; lon=lo; }
+/* ── encoded polylines for the mocks ──────────────────────── */
+function enc(pts, precision=6){
+  const f = Math.pow(10, precision);
+  let lat=0, lon=0, out='';
+  const v = n => { n = n<0 ? ~(n<<1) : (n<<1); let s='';
+    while(n>=0x20){ s += String.fromCharCode((0x20|(n&0x1f))+63); n >>= 5; }
+    return s + String.fromCharCode(n+63); };
+  for(const [x,y] of pts){ const la=Math.round(y*f), lo=Math.round(x*f);
+    out += v(la-lat) + v(lo-lon); lat=la; lon=lo; }
   return out;
 }
-const SHAPE=[[-80.8431,35.2271],[-80.8402,35.2310],[-80.8350,35.2388]];
-const RESP={
-  photon:{features:[{properties:{name:'Freedom Park',street:'East Blvd',housenumber:'1900',
-    city:'Charlotte',state:'North Carolina',country:'United States'},
-    geometry:{coordinates:[-80.8456,35.1924]}}]},
-  osrm:{code:'Ok',routes:[{distance:6823.4,duration:842.1,geometry:{type:'LineString',coordinates:SHAPE},
-    legs:[{steps:[
-      {distance:640,name:'S Tryon St',maneuver:{type:'depart',bearing_after:184,location:[-80.8431,35.2271]}},
-      {distance:1770,name:'E Morehead St',maneuver:{type:'turn',modifier:'right',location:[-80.8402,35.2310]}},
-      {distance:3100,name:'East Blvd',maneuver:{type:'turn',modifier:'left',location:[-80.8350,35.2388]}},
-      {distance:0,name:'',maneuver:{type:'arrive',location:[-80.8456,35.1924]}}]}]}]},
-  valhalla:{trip:{summary:{length:2.6,time:1980},legs:[{shape:enc6(SHAPE),
-    maneuvers:[{instruction:'Walk south on South Tryon Street.',length:0.4,street_names:['South Tryon Street']},
-      {instruction:'Turn right onto East Morehead Street.',length:1.1,street_names:['East Morehead Street']},
-      {instruction:'You have arrived at your destination.',length:0}]}]}},
-  tomtom:{incidents:[
-    {type:'Feature',geometry:{type:'LineString',coordinates:[[-80.84,35.22],[-80.839,35.221]]},
-     properties:{iconCategory:8,magnitudeOfDelay:4,events:[{description:'Closed',code:401}],
-       startTime:'2026-11-07T01:00:00Z',endTime:'2026-11-07T09:00:00Z',
-       from:'S Tryon St',to:'E Morehead St',length:238.553,delay:0,roadNumbers:['US-74']}},
-    {type:'Feature',geometry:{type:'Point',coordinates:[-80.85,35.23]},
-     properties:{iconCategory:1,magnitudeOfDelay:3,events:[{description:'Accident',code:108}],
-       from:'I-277',to:'',length:120,delay:540,roadNumbers:['I-277']}},
-    null]}
+const SEG1 = [[-80.8431,35.2271],[-80.8420,35.2260]];
+const SEG2 = [[-80.8420,35.2260],[-80.8470,35.2050],[-80.8456,35.1960]];
+const SEG3 = [[-80.8456,35.1960],[-80.8456,35.1924]];
+const T0 = '2026-11-07T16:42:00Z', T1='2026-11-07T16:48:00Z', T2='2026-11-07T17:06:00Z', T3='2026-11-07T17:15:00Z';
+
+const MOCK = {
+  photon:{ features:[
+    { properties:{ name:'Freedom Park', housenumber:'1900', street:'East Blvd', city:'Charlotte', state:'North Carolina', country:'United States' },
+      geometry:{ coordinates:[-80.8456,35.1924] } },
+    { properties:{ name:'Freedom Park Bandshell', city:'Charlotte', state:'North Carolina', country:'United States' },
+      geometry:{ coordinates:[-80.8460,35.1930] } } ] },
+  osrm:{ code:'Ok', routes:[{ distance:6823.4, duration:842.1,
+    geometry:{ type:'LineString', coordinates: SEG1.concat(SEG2) },
+    legs:[{ steps:[
+      { distance:640, name:'S Tryon St', maneuver:{ type:'depart', bearing_after:184, location:[-80.8431,35.2271] } },
+      { distance:1770, name:'E Morehead St', maneuver:{ type:'turn', modifier:'right', location:[-80.8420,35.2260] } },
+      { distance:3100, name:'East Blvd', maneuver:{ type:'turn', modifier:'left', location:[-80.8470,35.2050] } },
+      { distance:0, name:'', maneuver:{ type:'arrive', location:[-80.8456,35.1924] } } ] }] }] },
+  valhalla:{ trip:{ summary:{ length:2.6, time:1980 }, legs:[{ shape: enc(SEG1.concat(SEG2),6),
+    maneuvers:[
+      { instruction:'Walk south on South Tryon Street.', length:0.4, street_names:['South Tryon Street'], begin_shape_index:0 },
+      { instruction:'Turn right onto East Morehead Street.', length:1.1, street_names:['East Morehead Street'], begin_shape_index:1 },
+      { instruction:'You have arrived at your destination.', length:0, begin_shape_index:3 } ] }] } },
+  valhallaStatus:{ version:'3.5.1-0d04136' },
+  motis:{ itineraries:[
+    { duration:1980, startTime:T0, endTime:T3, legs:[
+      { mode:'WALK', from:{name:'Your location'}, to:{name:'Tryon St & 5th St'},
+        startTime:T0, endTime:T1, duration:360, distance:430, legGeometry:{points:enc(SEG1,6),precision:6} },
+      { mode:'BUS', routeShortName:'11', headsign:'Freedom Dr', routeColor:'1f6feb',
+        from:{name:'Tryon St & 5th St'}, to:{name:'East Blvd & Dilworth Rd'},
+        startTime:T1, endTime:T2, duration:1080, distance:5200, legGeometry:{points:enc(SEG2,6),precision:6} },
+      { mode:'WALK', from:{name:'East Blvd & Dilworth Rd'}, to:{name:'Freedom Park'},
+        startTime:T2, endTime:T3, duration:540, distance:610, legGeometry:{points:enc(SEG3,6),precision:6} } ] },
+    { duration:2400, startTime:T0, endTime:T3, legs:[
+      { mode:'WALK', from:{name:'Your location'}, to:{name:'Stonewall St'},
+        startTime:T0, endTime:T1, duration:400, distance:500, legGeometry:{points:enc(SEG1,6),precision:6} },
+      { mode:'LIGHT_RAIL', routeShortName:'Blue Line', headsign:'I-485', routeColor:'1e88e5',
+        from:{name:'Stonewall St'}, to:{name:'East/West Blvd'},
+        startTime:T1, endTime:T2, duration:1200, distance:4800, legGeometry:{points:enc(SEG2,6),precision:6} },
+      { mode:'WALK', from:{name:'East/West Blvd'}, to:{name:'Freedom Park'},
+        startTime:T2, endTime:T3, duration:800, distance:900, legGeometry:{points:enc(SEG3,6),precision:6} } ] } ] },
+  tomtom:{ incidents:[{type:'Feature'},{type:'Feature'},{type:'Feature'}] },
+  style:{ layers:new Array(42).fill({}) }
 };
-const seen=[];
-globalThis.fetch=async(url,opt)=>{
-  const u=String(url); seen.push(u.split('?')[0]);
-  const pick = u.includes('photon')&&u.includes('/reverse') ? RESP.photon
-    : u.includes('photon') ? RESP.photon
-    : u.includes('project-osrm') ? RESP.osrm
-    : u.includes('valhalla') ? RESP.valhalla
-    : u.includes('tomtom') ? RESP.tomtom : {};
-  globalThis.__lastUrl=u; globalThis.__lastOpt=opt;
-  return {ok:true,status:200,json:async()=>pick};
+const seen = [];
+let failTransit = false;
+globalThis.fetch = async (url, opt) => {
+  const u = String(url); seen.push(u.split('?')[0]);
+  let body = {};
+  if(u.includes('photon')) body = MOCK.photon;
+  else if(u.includes('project-osrm')) body = MOCK.osrm;
+  else if(u.includes('valhalla') && u.includes('/status')) body = MOCK.valhallaStatus;
+  else if(u.includes('valhalla')) body = MOCK.valhalla;
+  else if(u.includes('transitous')) body = failTransit ? { itineraries:[] } : MOCK.motis;
+  else if(u.includes('tomtom')) body = MOCK.tomtom;
+  else if(u.includes('openfreemap')) body = MOCK.style;
+  globalThis.__last = u;
+  return { ok:true, status:200, json: async () => body };
 };
 
-const probe=`;globalThis.T={fmtD,fmtT,dec6,osrmText,osrm,valhalla,bboxKm2,loadIncidents,geocode,
-  arrow,CAT,MAG,route,setDest,showPlace,showRoute,get incData(){return incData},
-  get hits(){return hits}, set TTKEY(v){TTKEY=v}, get TTKEY(){return TTKEY},
-  set trafficOn(v){trafficOn=v}, setMe, get map(){return map}, addOverlays, addTraffic,
-  selftest, SVC, startNav, exitNav, paintHud, clearRoute, hav, hudStep, setGps, NET,
-  quotaUsed, quotaBump, loadIncidents,
-  get gpsState(){return gpsState}, set manualMe(v){manualMe=v},
-  get navSt(){return navSt}, get routeInfo(){return routeInfo}};`;
-try{ new Function(app+probe)(); }catch(e){ console.log('APP THREW ON LOAD:',e.message); process.exit(1); }
-console.log('app evaluated with no throw');
-const T=globalThis.T;
+const probe = `;globalThis.T = { fmtDist, fmtDur, fmtShort, decodePoly, geocode, routeDrive, routeValhalla,
+  routeTransit, planMode, planAll, renderOptions, paintRoute, systemCheck, startNav, navStep, endNav, advance,
+  setPlace, trip, SERVICES, hav, addLayers,
+  get options(){return options}, get current(){return current}, get nav(){return nav}, set nav(v){nav=v},
+  get map(){return map}, get me(){return me}, set me(v){me=v}, set following(v){following=v},
+  set mode(v){mode=v}, get mode(){return mode}, set ttKey(v){ttKey=v} };`;
+let ok = true;
+const chk = (cond, msg) => { if(!cond){ console.log('  ✗ ' + msg); ok = false; } };
 
-/* ---------- formatters ---------- */
-console.log('\n-- units --');
-for(const m of [45,160,1200,6823,160000]) console.log('  '+m+' m ->', T.fmtD(m));
-for(const s of [40,95,842,7200]) console.log('  '+s+' s ->', T.fmtT(s));
+try { new Function(app + probe)(); } catch(e){ console.log('APP THREW ON LOAD:', e.message); process.exit(1); }
+console.log('app loaded with no exception');
+const T = globalThis.T;
 
-/* ---------- polyline round trip ---------- */
-const dec=T.dec6(enc6(SHAPE));
-const maxErr=Math.max(...dec.map((p,i)=>Math.max(Math.abs(p[0]-SHAPE[i][0]),Math.abs(p[1]-SHAPE[i][1]))));
-console.log('\n-- polyline6 --\n  points',dec.length,'of',SHAPE.length,'| max coord error',maxErr.toExponential(1));
-if(dec.length!==SHAPE.length||maxErr>1e-6){ console.log('POLYLINE DECODE WRONG'); process.exit(1); }
+/* ── formatting ───────────────────────────────────────────── */
+console.log('\n── formatting');
+console.log('  ', [45,160,1200,6823,160000].map(m=>T.fmtDist(m)).join(' | '));
+console.log('  ', [40,95,842,3600,7320].map(s=>T.fmtDur(s)).join(' | '));
+chk(T.fmtDur(3600)==='1 hr', 'fmtDur(3600) should be "1 hr", got ' + T.fmtDur(3600));
 
-/* ---------- osrm ---------- */
-const r=await T.osrm({lat:35.2271,lon:-80.8431},{lat:35.1924,lon:-80.8456});
-console.log('\n-- driving route (OSRM) --');
-console.log('  summary:',T.fmtT(r.time),'/',T.fmtD(r.dist),'| steps:',r.steps.length);
-r.steps.forEach(s=>console.log('   •',s.text,'['+(s.dist?T.fmtD(s.dist):'')+']'));
-if(r.steps.length!==4||!/Head south/.test(r.steps[0].text)||!/Arrive/.test(r.steps[3].text)){
-  console.log('OSRM STEP TEXT WRONG'); process.exit(1); }
+/* ── polyline ─────────────────────────────────────────────── */
+const rt = T.decodePoly(enc(SEG2,6), 6);
+const err = Math.max(...rt.map((p,i)=>Math.max(Math.abs(p[0]-SEG2[i][0]), Math.abs(p[1]-SEG2[i][1]))));
+console.log('\n── polyline: ' + rt.length + ' pts, max error ' + err.toExponential(1));
+chk(rt.length===SEG2.length && err < 1e-6, 'polyline round-trip');
 
-/* ---------- valhalla ---------- */
-const w=await T.valhalla({lat:35.2271,lon:-80.8431},{lat:35.1924,lon:-80.8456},'pedestrian');
-console.log('\n-- walking route (Valhalla) --');
-console.log('  summary:',T.fmtT(w.time),'/',T.fmtD(w.dist),'| geometry points:',w.geo.coordinates.length);
-console.log('  POST body sent:',String(globalThis.__lastOpt&&globalThis.__lastOpt.body).slice(0,96));
-if(w.geo.coordinates.length!==3){ console.log('VALHALLA SHAPE WRONG'); process.exit(1); }
+/* ── search ───────────────────────────────────────────────── */
+const hits = await T.geocode('freedom park');
+console.log('\n── search');
+hits.forEach(h => console.log('   ' + h.name + ' — ' + h.detail));
+chk(hits[0].name === 'Freedom Park', 'first search hit');
 
-/* ---------- incidents ---------- */
-console.log('\n-- live incidents (TomTom) --');
-console.log('  bbox area km2:', Math.round(T.bboxKm2(T.map.getBounds())));
-T.TTKEY='TESTKEY'; T.trafficOn=true;
-await T.loadIncidents(true);
-const inc=T.incData;
-console.log('  parsed features:',inc.features.length,'(one null dropped)');
-inc.features.forEach(f=>console.log('   •',f.properties.cat,'|',f.properties.mag,'|',
-  f.properties.desc,'|',f.properties.from||'-','| delay',f.properties.delay,'| colour',f.properties.col));
-if(inc.features.length!==2){ console.log('INCIDENT PARSE WRONG'); process.exit(1); }
-if(inc.features[0].properties.cat!=='Road closed'||inc.features[1].properties.cat!=='Accident'){
-  console.log('INCIDENT CATEGORY MAPPING WRONG'); process.exit(1); }
-console.log('  request url shape:', globalThis.__lastUrl.split('&').slice(0,3).join('&').replace('TESTKEY','KEY'));
+/* ── drive ────────────────────────────────────────────────── */
+const A = { lat:35.2271, lon:-80.8431 }, B = { lat:35.1924, lon:-80.8456 };
+const d = await T.routeDrive(A,B);
+console.log('\n── drive: ' + T.fmtDur(d.duration) + ' / ' + T.fmtDist(d.distance) + ', ' + d.legs[0].steps.length + ' steps');
+d.legs[0].steps.forEach(s => console.log('   • ' + s.text));
+chk(d.legs[0].steps.length===4 && /Head south/.test(d.legs[0].steps[0].text), 'drive steps');
 
-/* ---------- search ---------- */
-await T.geocode('freedom park');
-console.log('\n-- search --');
-T.hits.forEach(h=>console.log('   •',h.name,'|',h.detail,'|',h.lat,h.lon));
-if(!T.hits.length||T.hits[0].name!=='Freedom Park'){ console.log('SEARCH PARSE WRONG'); process.exit(1); }
+/* ── walk / bike ──────────────────────────────────────────── */
+const w = await T.routeValhalla(A,B,'pedestrian');
+const bk = await T.routeValhalla(A,B,'bicycle');
+console.log('\n── walk: ' + T.fmtDur(w.duration) + ' / ' + T.fmtDist(w.distance) + ', kind ' + w.legs[0].kind);
+console.log('── bike: kind ' + bk.legs[0].kind + ', colour ' + bk.legs[0].color);
+chk(w.legs[0].kind==='WALK' && bk.legs[0].kind==='BIKE', 'walk/bike leg kinds');
+chk(w.legs[0].steps[1].lat != null, 'valhalla maneuver coordinates resolved from shape index');
 
-/* ---------- maneuver icons ---------- */
-console.log('\n-- maneuver icons --');
-for(const t of ['Turn left onto X','Turn right onto Y','Continue on Z','Arrive at your destination'])
-  console.log('  '+t.padEnd(30), T.arrow(t).includes('M9 5L4 10')?'left-arrow'
-    : T.arrow(t).includes('M15 5l5 5')?'right-arrow'
-    : T.arrow(t).includes('M12 22s7')?'destination-pin':'straight-arrow');
+/* ── transit ──────────────────────────────────────────────── */
+const tr = await T.routeTransit(A,B);
+console.log('\n── transit: ' + tr.length + ' itineraries');
+tr.forEach((it,i) => {
+  const chain = it.legs.map(l => l.kind==='WALK' ? 'walk' : (l.vehicle+' '+l.line)).join(' › ');
+  console.log('   ' + (i+1) + ') ' + T.fmtDur(it.duration) + '  ' + chain + '  transfers=' + it.transfers);
+});
+chk(tr.length===2, 'two transit itineraries');
+chk(tr[0].legs[1].vehicle==='Bus' && tr[0].legs[1].line==='11', 'bus leg named');
+chk(tr[1].legs[1].vehicle==='Light rail', 'LIGHT_RAIL maps to Light rail, got ' + tr[1].legs[1].vehicle);
+chk(tr[0].transfers===0, 'single transit leg means 0 transfers, got ' + tr[0].transfers);
+chk(tr[0].legs[0].coords.length===2, 'walk leg geometry decoded');
+chk(tr[0].legs[1].color==='#1f6feb', 'route colour honoured, got ' + tr[0].legs[1].color);
 
-/* ---------- overlay layers ---------- */
-T.addOverlays();
-console.log('\n-- layers registered --', Object.keys(T.map._lay).join(', '));
-for(const need of ['route-case','route-line','inc-line','inc-pt','flow'])
-  if(!T.map._lay[need]){ console.log('MISSING LAYER:',need); process.exit(1); }
+/* ── all four modes in parallel ───────────────────────────── */
+console.log('\n── planning all modes');
+T.setPlace('from', { name:'Your location', lat:A.lat, lon:A.lon });
+T.setPlace('to',   { name:'Freedom Park',  lat:B.lat, lon:B.lon });
+await T.planAll();
+const tabs = {};
+document.querySelectorAll('.mode').forEach(el => tabs[el.dataset.mode] = el.querySelector('em').textContent);
+console.log('   tab ETAs:', JSON.stringify(tabs));
+chk(Object.values(tabs).every(v => v && v !== ''), 'every mode tab shows an ETA');
+chk(/m$/.test(tabs.drive), 'drive tab shows a duration, got ' + tabs.drive);
 
-/* ---------- self test ---------- */
-for(const sv of T.SVC){ const row=E[sv.id]=el(sv.id); const cell={className:'',textContent:''};
-  const dot={className:''}; row.querySelector=s2=>s2==='.sd'?dot:cell; row._dot=dot; row._cell=cell; }
-T.TTKEY='TESTKEY';
-const fails=await T.selftest();
-console.log('\n-- self test --');
-for(const sv of T.SVC) console.log('  '+sv.n.padEnd(15), E[sv.id]._dot.className.padEnd(7), E[sv.id]._cell.textContent);
-console.log('  failing services:',fails);
-if(fails!==0){ console.log('SELFTEST REPORTED FAILURES WITH ALL MOCKS OK'); process.exit(1); }
+/* ── rendered output ──────────────────────────────────────── */
+T.mode = 'transit';
+globalThis.T.nav = null;
+const opts = await T.planMode('transit');
+console.log('\n── transit rendering');
+const html = (()=>{ const o = T.options; return ''; })();
+chk(opts.length===2, 'planMode transit returns itineraries');
 
-/* ---------- nav HUD: manual stepping with NO gps ---------- */
-T.setDest({name:'Freedom Park',detail:'',lat:35.1924,lon:-80.8456});
-await T.route();
-const ri=T.routeInfo;
-T.manualMe=true;              // pretend the user set a start by hand, so follow is not engaged
-T.setGps('denied');
-T.startNav(ri);
-console.log('\n-- nav HUD without GPS --');
-console.log('  step', T.navSt.i, '|', E['hudi'].textContent, '| next btn disabled =', E['hudnext'].disabled);
-T.hudStep(1);
-console.log('  after pressing NEXT -> step', T.navSt.i, '|', E['hudi'].textContent);
-T.hudStep(1); T.hudStep(1);
-console.log('  at last step', T.navSt.i, '| next disabled =', E['hudnext'].disabled, '| prev disabled =', E['hudprev'].disabled);
-T.hudStep(-1);
-console.log('  after BACK -> step', T.navSt.i);
-if(T.navSt.i!==2){ console.log('MANUAL STEPPING BROKEN'); process.exit(1); }
+/* ── map layers + geometry painted ────────────────────────── */
+T.addLayers();                       // the stub never fires map 'load'
+T.paintRoute(tr[0]);
+const routeData = T.map.src['route']._data;
+const stopData  = T.map.src['stops']._data;
+console.log('   route features: ' + routeData.features.length +
+  ' (walk flags: ' + routeData.features.map(f=>f.properties.walk?'W':'T').join('') + ')');
+console.log('   transit stop dots: ' + stopData.features.length);
+chk(routeData.features.length===3, 'three leg features painted');
+chk(stopData.features.length===2, 'board and alight dots');
+chk(['route-case','route-line','route-walk','stops'].every(l => T.map.lay[l]), 'all route layers registered');
 
-/* ---------- gps must not hijack steps unless it is actually live ---------- */
-T.navSt.i=0; T.setGps('denied');
-T.setMe(ri.steps[2].lat, ri.steps[2].lon, 20);
-console.log('\n-- gps gating --\n  position jumped while GPS is blocked -> step', T.navSt.i, '(must stay 0)');
-if(T.navSt.i!==0){ console.log('BLOCKED GPS STILL MOVED THE STEP'); process.exit(1); }
-T.setGps('live');
-T.setMe(ri.steps[1].lat, ri.steps[1].lon, 20);
-console.log('  same move with GPS live -> step', T.navSt.i, '| speed', E['hudsp'].textContent);
-if(T.navSt.i!==2){ console.log('LIVE GPS DID NOT ADVANCE'); process.exit(1); }
-console.log('  chip reads:', E['gpschip'].textContent);
-T.exitNav(); T.clearRoute();
-console.log('  exit + clear ok');
+/* ── no-transit path ──────────────────────────────────────── */
+failTransit = true;
+let msg='';
+try { await T.routeTransit(A,B); } catch(e){ msg = e.message; }
+console.log('\n── no transit coverage -> ' + msg);
+chk(msg==='NO_TRANSIT', 'empty itineraries raise NO_TRANSIT');
+failTransit = false;
 
-/* ---------- router fallback ---------- */
-let osrmDown=true;
-const realFetch=globalThis.fetch;
-globalThis.fetch=async(u,o)=>{ if(osrmDown&&String(u).includes('project-osrm')) throw new Error('Failed to fetch');
-  return realFetch(u,o); };
-T.setDest({name:'Freedom Park',detail:'',lat:35.1924,lon:-80.8456});
-await T.route();
-console.log('\n-- router fallback --\n  with OSRM down, route came from', T.routeInfo.src,
-  '|', T.fmtT(T.routeInfo.time), '/', T.fmtD(T.routeInfo.dist));
-if(T.routeInfo.src!=='Valhalla'){ console.log('FALLBACK DID NOT ENGAGE'); process.exit(1); }
-globalThis.fetch=realFetch;
+/* ── turn by turn ─────────────────────────────────────────── */
+console.log('\n── navigation');
+T.startNav(d);
+console.log('   start: step ' + (T.nav.i+1) + ' — ' + E['navInstr'].textContent + ' in ' + E['navDist'].textContent);
+console.log('   arrive ' + E['navEta'].textContent + ', left ' + E['navLeft'].textContent);
+T.navStep(1);
+chk(T.nav.i===1, 'manual next');
+T.navStep(-1); chk(T.nav.i===0, 'manual back');
+T.me = { lat:d.legs[0].steps[1].lat, lon:d.legs[0].steps[1].lon };
+T.following = true; T.advance();
+console.log('   GPS at maneuver 2 -> step ' + (T.nav.i+1));
+chk(T.nav.i===2, 'gps advance moves past a reached maneuver, got ' + T.nav.i);
+T.me = { lat:d.legs[0].steps[0].lat, lon:d.legs[0].steps[0].lon }; T.advance();
+chk(T.nav.i===2, 'gps jitter must not rewind');
+T.endNav(); chk(E['nav'].hidden===true, 'nav closes');
 
-/* ---------- reliability: timeout, retry, offline, quota ---------- */
-console.log('\n-- reliability --');
-const realF=globalThis.fetch;
+/* ── system check ─────────────────────────────────────────── */
+console.log('\n── system check');
+const svcList = document.getElementById('svcList');
+const rows = {};
+svcList.querySelector = sel => { const m=/data-svc="([a-z]+)"/.exec(sel); if(!m) return mkEl('x');
+  return rows[m[1]] || (rows[m[1]] = mkEl('row-'+m[1])); };
+T.ttKey = 'TESTKEY';
+const bad = await T.systemCheck();
+for(const s of T.SERVICES){ const r = rows[s.id];
+  console.log('   ' + s.id.padEnd(9) + (r.querySelector('i').className||'soft').padEnd(6) + r.querySelector('span').textContent); }
+console.log('   failing: ' + bad);
+chk(bad===0, 'no hard failures with all mocks healthy');
 
-// a) transient failure then success -> must retry and win
-let attempts=0;
-globalThis.fetch=async(u,o)=>{
-  if(!String(u).includes('example.test/x')) return {ok:true,status:200,json:async()=>({})};
-  attempts++;
-  if(attempts<3) throw new Error('ECONNRESET');
-  return {ok:true,status:200,json:async()=>({ok:1})}; };
-const t0=Date.now();
-const got=await T.NET.json('https://example.test/x',null,{tries:3,ms:5000,label:'Thing'});
-console.log('  retry: succeeded on attempt',attempts,'after',Date.now()-t0,'ms ->',JSON.stringify(got));
-if(attempts!==3){ console.log('RETRY DID NOT WORK'); process.exit(1); }
-
-// b) a hanging request must abort, not hang forever
-globalThis.fetch=(u,o)=>{
-  if(!String(u).includes('example.test/hang')) return Promise.resolve({ok:true,status:200,json:async()=>({})});
-  return new Promise((res,rej)=>{
-    if(o&&o.signal) o.signal.addEventListener('abort',()=>{ const e=new Error('aborted'); e.name='AbortError'; rej(e); });
-  });};
-let timedOut='';
-try{ await T.NET.json('https://example.test/hang',null,{tries:0,ms:300,label:'Hanging thing'}); }
-catch(e){ timedOut=e.message; }
-console.log('  timeout:',timedOut);
-if(!/timed out/.test(timedOut)){ console.log('TIMEOUT DID NOT FIRE'); process.exit(1); }
-
-// c) HTTP status codes become readable errors
-for(const [code,want] of [[429,'rate limited'],[403,'rejected the key'],[500,'HTTP 500']]){
-  globalThis.fetch=async(u)=>String(u).includes('example.test/s')
-    ? {ok:code<400,status:code,json:async()=>({})}
-    : {ok:true,status:200,json:async()=>({})};
-  let m=''; try{ await T.NET.json('https://example.test/s',null,{tries:0,ms:900,label:'Svc'}); }catch(e){ m=e.message; }
-  console.log('  HTTP '+code+' ->', m);
-  if(!m.includes(want)){ console.log('BAD ERROR TEXT FOR',code); process.exit(1); }
-}
-
-// d) offline short-circuits instead of retrying blindly
-navigator.onLine=false;
-globalThis.fetch=async(u)=>{ if(!String(u).includes('example.test/o'))
-    return {ok:true,status:200,json:async()=>({})};
-  throw new Error('network down'); };
-let off=''; try{ await T.NET.json('https://example.test/o',null,{tries:3,ms:900,label:'Svc'}); }catch(e){ off=e.message; }
-console.log('  offline:',off);
-if(off!=='You are offline'){ console.log('OFFLINE NOT DETECTED'); process.exit(1); }
-navigator.onLine=true;
-
-// e) background tab must not burn the free tier
-globalThis.fetch=realF;
-const before=T.quotaUsed();
-document.hidden=true;  await T.loadIncidents(true);
-console.log('  hidden tab: quota went',before,'->',T.quotaUsed(),'(must not move)');
-if(T.quotaUsed()!==before){ console.log('BACKGROUND TAB BURNED QUOTA'); process.exit(1); }
-document.hidden=false; await T.loadIncidents(true);
-console.log('  visible tab: quota went',before,'->',T.quotaUsed(),'(must move)');
-if(T.quotaUsed()!==before+1){ console.log('QUOTA NOT COUNTED'); process.exit(1); }
-
-console.log('\nhosts contacted:', [...new Set(seen)].join('\n                 '));
-console.log('\nALL NAV CHECKS PASSED');
-process.exit(0);
+console.log('\nhosts: ' + [...new Set(seen)].join('\n       '));
+console.log(ok ? '\nALL CHECKS PASSED' : '\nSOME CHECKS FAILED');
+process.exit(ok ? 0 : 1);

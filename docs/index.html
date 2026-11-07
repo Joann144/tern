@@ -1,284 +1,378 @@
 <!DOCTYPE html>
-<html lang="en" data-t="dark">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Tern</title>
+<meta name="description" content="Open map and trip planner. Drive, transit, bike and walk directions on OpenStreetMap data.">
 <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
 <link rel="preconnect" href="https://photon.komoot.io">
+<link rel="preconnect" href="https://api.transitous.org">
 <style>.maplibregl-map{font:12px/20px Helvetica Neue,Arial,Helvetica,sans-serif;overflow:hidden;position:relative;-webkit-tap-highlight-color:rgb(0 0 0/0)}.maplibregl-canvas{left:0;position:absolute;top:0}.maplibregl-map:fullscreen{height:100%;width:100%}.maplibregl-ctrl-group button.maplibregl-ctrl-compass{touch-action:none}.maplibregl-canvas-container.maplibregl-interactive,.maplibregl-ctrl-group button.maplibregl-ctrl-compass{cursor:grab;-webkit-user-select:none;-moz-user-select:none;user-select:none}.maplibregl-canvas-container.maplibregl-interactive.maplibregl-track-pointer{cursor:pointer}.maplibregl-canvas-container.maplibregl-interactive:active,.maplibregl-ctrl-group button.maplibregl-ctrl-compass:active{cursor:grabbing}.maplibregl-canvas-container.maplibregl-touch-zoom-rotate,.maplibregl-canvas-container.maplibregl-touch-zoom-rotate .maplibregl-canvas{touch-action:pan-x pan-y}.maplibregl-canvas-container.maplibregl-touch-drag-pan,.maplibregl-canvas-container.maplibregl-touch-drag-pan .maplibregl-canvas{touch-action:pinch-zoom}.maplibregl-canvas-container.maplibregl-touch-zoom-rotate.maplibregl-touch-drag-pan,.maplibregl-canvas-container.maplibregl-touch-zoom-rotate.maplibregl-touch-drag-pan .maplibregl-canvas{touch-action:none}.maplibregl-canvas-container.maplibregl-touch-drag-pan.maplibregl-cooperative-gestures,.maplibregl-canvas-container.maplibregl-touch-drag-pan.maplibregl-cooperative-gestures .maplibregl-canvas{touch-action:pan-x pan-y}.maplibregl-ctrl-bottom-left,.maplibregl-ctrl-bottom-right,.maplibregl-ctrl-top-left,.maplibregl-ctrl-top-right{pointer-events:none;position:absolute;z-index:2}.maplibregl-ctrl-top-left{left:0;top:0}.maplibregl-ctrl-top-right{right:0;top:0}.maplibregl-ctrl-bottom-left{bottom:0;left:0}.maplibregl-ctrl-bottom-right{bottom:0;right:0}.maplibregl-ctrl{clear:both;pointer-events:auto;transform:translate(0)}.maplibregl-ctrl-top-left .maplibregl-ctrl{float:left;margin:10px 0 0 10px}.maplibregl-ctrl-top-right .maplibregl-ctrl{float:right;margin:10px 10px 0 0}.maplibregl-ctrl-bottom-left .maplibregl-ctrl{float:left;margin:0 0 10px 10px}.maplibregl-ctrl-bottom-right .maplibregl-ctrl{float:right;margin:0 10px 10px 0}.maplibregl-ctrl-group{background:#fff;border-radius:4px}.maplibregl-ctrl-group:not(:empty){box-shadow:0 0 0 2px rgba(0,0,0,.1)}@media (forced-colors:active){.maplibregl-ctrl-group:not(:empty){box-shadow:0 0 0 2px ButtonText}}.maplibregl-ctrl-group button{background-color:transparent;border:0;box-sizing:border-box;cursor:pointer;display:block;height:29px;outline:none;padding:0;width:29px}.maplibregl-ctrl-group button+button{border-top:1px solid #ddd}.maplibregl-ctrl button .maplibregl-ctrl-icon{background-position:50%;background-repeat:no-repeat;display:block;height:100%;width:100%}@media (forced-colors:active){.maplibregl-ctrl-icon{background-color:transparent}.maplibregl-ctrl-group button+button{border-top:1px solid ButtonText}}.maplibregl-ctrl button::-moz-focus-inner{border:0;padding:0}.maplibregl-ctrl-attrib-button:focus,.maplibregl-ctrl-group button:focus{box-shadow:0 0 2px 2px #0096ff}.maplibregl-ctrl button:disabled{cursor:not-allowed}.maplibregl-ctrl button:disabled .maplibregl-ctrl-icon{opacity:.25}@media (hover:hover){.maplibregl-ctrl button:not(:disabled):hover{background-color:rgba(0,0,0,.05)}}.maplibregl-ctrl button:not(:disabled):active{background-color:rgba(0,0,0,.05)}.maplibregl-ctrl-group button:focus:focus-visible{box-shadow:0 0 2px 2px #0096ff}.maplibregl-ctrl-group button:focus:not(:focus-visible){box-shadow:none}.maplibregl-ctrl-group button:focus:first-child{border-radius:4px 4px 0 0}.maplibregl-ctrl-group button:focus:last-child{border-radius:0 0 4px 4px}.maplibregl-ctrl-group button:focus:only-child{border-radius:inherit}.maplibregl-ctrl button.maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23333' viewBox='0 0 29 29'%3E%3Cpath d='M10 13c-.75 0-1.5.75-1.5 1.5S9.25 16 10 16h9c.75 0 1.5-.75 1.5-1.5S19.75 13 19 13z'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23333' viewBox='0 0 29 29'%3E%3Cpath d='M14.5 8.5c-.75 0-1.5.75-1.5 1.5v3h-3c-.75 0-1.5.75-1.5 1.5S9.25 16 10 16h3v3c0 .75.75 1.5 1.5 1.5S16 19.75 16 19v-3h3c.75 0 1.5-.75 1.5-1.5S19.75 13 19 13h-3v-3c0-.75-.75-1.5-1.5-1.5'/%3E%3C/svg%3E")}@media (forced-colors:active){.maplibregl-ctrl button.maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23fff' viewBox='0 0 29 29'%3E%3Cpath d='M10 13c-.75 0-1.5.75-1.5 1.5S9.25 16 10 16h9c.75 0 1.5-.75 1.5-1.5S19.75 13 19 13z'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23fff' viewBox='0 0 29 29'%3E%3Cpath d='M14.5 8.5c-.75 0-1.5.75-1.5 1.5v3h-3c-.75 0-1.5.75-1.5 1.5S9.25 16 10 16h3v3c0 .75.75 1.5 1.5 1.5S16 19.75 16 19v-3h3c.75 0 1.5-.75 1.5-1.5S19.75 13 19 13h-3v-3c0-.75-.75-1.5-1.5-1.5'/%3E%3C/svg%3E")}}@media (forced-colors:active) and (prefers-color-scheme:light){.maplibregl-ctrl button.maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' viewBox='0 0 29 29'%3E%3Cpath d='M10 13c-.75 0-1.5.75-1.5 1.5S9.25 16 10 16h9c.75 0 1.5-.75 1.5-1.5S19.75 13 19 13z'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' viewBox='0 0 29 29'%3E%3Cpath d='M14.5 8.5c-.75 0-1.5.75-1.5 1.5v3h-3c-.75 0-1.5.75-1.5 1.5S9.25 16 10 16h3v3c0 .75.75 1.5 1.5 1.5S16 19.75 16 19v-3h3c.75 0 1.5-.75 1.5-1.5S19.75 13 19 13h-3v-3c0-.75-.75-1.5-1.5-1.5'/%3E%3C/svg%3E")}}.maplibregl-ctrl button.maplibregl-ctrl-fullscreen .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23333' viewBox='0 0 29 29'%3E%3Cpath d='M24 16v5.5c0 1.75-.75 2.5-2.5 2.5H16v-1l3-1.5-4-5.5 1-1 5.5 4 1.5-3zM6 16l1.5 3 5.5-4 1 1-4 5.5 3 1.5v1H7.5C5.75 24 5 23.25 5 21.5V16zm7-11v1l-3 1.5 4 5.5-1 1-5.5-4L6 13H5V7.5C5 5.75 5.75 5 7.5 5zm11 2.5c0-1.75-.75-2.5-2.5-2.5H16v1l3 1.5-4 5.5 1 1 5.5-4 1.5 3h1z'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-shrink .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' viewBox='0 0 29 29'%3E%3Cpath d='M18.5 16c-1.75 0-2.5.75-2.5 2.5V24h1l1.5-3 5.5 4 1-1-4-5.5 3-1.5v-1zM13 18.5c0-1.75-.75-2.5-2.5-2.5H5v1l3 1.5L4 24l1 1 5.5-4 1.5 3h1zm3-8c0 1.75.75 2.5 2.5 2.5H24v-1l-3-1.5L25 5l-1-1-5.5 4L17 5h-1zM10.5 13c1.75 0 2.5-.75 2.5-2.5V5h-1l-1.5 3L5 4 4 5l4 5.5L5 12v1z'/%3E%3C/svg%3E")}@media (forced-colors:active){.maplibregl-ctrl button.maplibregl-ctrl-fullscreen .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23fff' viewBox='0 0 29 29'%3E%3Cpath d='M24 16v5.5c0 1.75-.75 2.5-2.5 2.5H16v-1l3-1.5-4-5.5 1-1 5.5 4 1.5-3zM6 16l1.5 3 5.5-4 1 1-4 5.5 3 1.5v1H7.5C5.75 24 5 23.25 5 21.5V16zm7-11v1l-3 1.5 4 5.5-1 1-5.5-4L6 13H5V7.5C5 5.75 5.75 5 7.5 5zm11 2.5c0-1.75-.75-2.5-2.5-2.5H16v1l3 1.5-4 5.5 1 1 5.5-4 1.5 3h1z'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-shrink .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23fff' viewBox='0 0 29 29'%3E%3Cpath d='M18.5 16c-1.75 0-2.5.75-2.5 2.5V24h1l1.5-3 5.5 4 1-1-4-5.5 3-1.5v-1zM13 18.5c0-1.75-.75-2.5-2.5-2.5H5v1l3 1.5L4 24l1 1 5.5-4 1.5 3h1zm3-8c0 1.75.75 2.5 2.5 2.5H24v-1l-3-1.5L25 5l-1-1-5.5 4L17 5h-1zM10.5 13c1.75 0 2.5-.75 2.5-2.5V5h-1l-1.5 3L5 4 4 5l4 5.5L5 12v1z'/%3E%3C/svg%3E")}}@media (forced-colors:active) and (prefers-color-scheme:light){.maplibregl-ctrl button.maplibregl-ctrl-fullscreen .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' viewBox='0 0 29 29'%3E%3Cpath d='M24 16v5.5c0 1.75-.75 2.5-2.5 2.5H16v-1l3-1.5-4-5.5 1-1 5.5 4 1.5-3zM6 16l1.5 3 5.5-4 1 1-4 5.5 3 1.5v1H7.5C5.75 24 5 23.25 5 21.5V16zm7-11v1l-3 1.5 4 5.5-1 1-5.5-4L6 13H5V7.5C5 5.75 5.75 5 7.5 5zm11 2.5c0-1.75-.75-2.5-2.5-2.5H16v1l3 1.5-4 5.5 1 1 5.5-4 1.5 3h1z'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-shrink .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' viewBox='0 0 29 29'%3E%3Cpath d='M18.5 16c-1.75 0-2.5.75-2.5 2.5V24h1l1.5-3 5.5 4 1-1-4-5.5 3-1.5v-1zM13 18.5c0-1.75-.75-2.5-2.5-2.5H5v1l3 1.5L4 24l1 1 5.5-4 1.5 3h1zm3-8c0 1.75.75 2.5 2.5 2.5H24v-1l-3-1.5L25 5l-1-1-5.5 4L17 5h-1zM10.5 13c1.75 0 2.5-.75 2.5-2.5V5h-1l-1.5 3L5 4 4 5l4 5.5L5 12v1z'/%3E%3C/svg%3E")}}.maplibregl-ctrl button.maplibregl-ctrl-compass .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23333' viewBox='0 0 29 29'%3E%3Cpath d='m10.5 14 4-8 4 8z'/%3E%3Cpath fill='%23ccc' d='m10.5 16 4 8 4-8z'/%3E%3C/svg%3E")}@media (forced-colors:active){.maplibregl-ctrl button.maplibregl-ctrl-compass .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23fff' viewBox='0 0 29 29'%3E%3Cpath d='m10.5 14 4-8 4 8z'/%3E%3Cpath fill='%23ccc' d='m10.5 16 4 8 4-8z'/%3E%3C/svg%3E")}}@media (forced-colors:active) and (prefers-color-scheme:light){.maplibregl-ctrl button.maplibregl-ctrl-compass .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' viewBox='0 0 29 29'%3E%3Cpath d='m10.5 14 4-8 4 8z'/%3E%3Cpath fill='%23ccc' d='m10.5 16 4 8 4-8z'/%3E%3C/svg%3E")}}.maplibregl-ctrl button.maplibregl-ctrl-globe .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' fill='none' stroke='%23333' viewBox='0 0 22 22'%3E%3Ccircle cx='11' cy='11' r='8.5'/%3E%3Cpath d='M17.5 11c0 4.819-3.02 8.5-6.5 8.5S4.5 15.819 4.5 11 7.52 2.5 11 2.5s6.5 3.681 6.5 8.5Z'/%3E%3Cpath d='M13.5 11c0 2.447-.331 4.64-.853 6.206-.262.785-.562 1.384-.872 1.777-.314.399-.58.517-.775.517s-.461-.118-.775-.517c-.31-.393-.61-.992-.872-1.777C8.831 15.64 8.5 13.446 8.5 11s.331-4.64.853-6.206c.262-.785.562-1.384.872-1.777.314-.399.58-.517.775-.517s.461.118.775.517c.31.393.61.992.872 1.777.522 1.565.853 3.76.853 6.206Z'/%3E%3Cpath d='M11 7.5c-1.909 0-3.622-.166-4.845-.428-.616-.132-1.08-.283-1.379-.434a1.3 1.3 0 0 1-.224-.138q.07-.058.224-.138c.299-.151.763-.302 1.379-.434C7.378 5.666 9.091 5.5 11 5.5s3.622.166 4.845.428c.616.132 1.08.283 1.379.434.105.053.177.1.224.138q-.07.058-.224.138c-.299.151-.763.302-1.379.434-1.223.262-2.936.428-4.845.428ZM4.486 6.436ZM11 16.5c-1.909 0-3.622-.166-4.845-.428-.616-.132-1.08-.283-1.379-.434a1.3 1.3 0 0 1-.224-.138 1.3 1.3 0 0 1 .224-.138c.299-.151.763-.302 1.379-.434C7.378 14.666 9.091 14.5 11 14.5s3.622.166 4.845.428c.616.132 1.08.283 1.379.434.105.053.177.1.224.138a1.3 1.3 0 0 1-.224.138c-.299.151-.763.302-1.379.434-1.223.262-2.936.428-4.845.428Zm-6.514-1.064ZM11 12.5c-2.46 0-4.672-.222-6.255-.574-.796-.177-1.406-.38-1.805-.59a1.5 1.5 0 0 1-.39-.272.3.3 0 0 1-.047-.064.3.3 0 0 1 .048-.064c.066-.073.189-.167.389-.272.399-.21 1.009-.413 1.805-.59C6.328 9.722 8.54 9.5 11 9.5s4.672.222 6.256.574c.795.177 1.405.38 1.804.59.2.105.323.2.39.272a.3.3 0 0 1 .047.064.3.3 0 0 1-.048.064 1.4 1.4 0 0 1-.389.272c-.399.21-1.009.413-1.804.59-1.584.352-3.796.574-6.256.574Zm-8.501-1.51v.002zm0 .018v.002zm17.002.002v-.002zm0-.018v-.002z'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-globe-enabled .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' fill='none' stroke='%2333b5e5' viewBox='0 0 22 22'%3E%3Ccircle cx='11' cy='11' r='8.5'/%3E%3Cpath d='M17.5 11c0 4.819-3.02 8.5-6.5 8.5S4.5 15.819 4.5 11 7.52 2.5 11 2.5s6.5 3.681 6.5 8.5Z'/%3E%3Cpath d='M13.5 11c0 2.447-.331 4.64-.853 6.206-.262.785-.562 1.384-.872 1.777-.314.399-.58.517-.775.517s-.461-.118-.775-.517c-.31-.393-.61-.992-.872-1.777C8.831 15.64 8.5 13.446 8.5 11s.331-4.64.853-6.206c.262-.785.562-1.384.872-1.777.314-.399.58-.517.775-.517s.461.118.775.517c.31.393.61.992.872 1.777.522 1.565.853 3.76.853 6.206Z'/%3E%3Cpath d='M11 7.5c-1.909 0-3.622-.166-4.845-.428-.616-.132-1.08-.283-1.379-.434a1.3 1.3 0 0 1-.224-.138q.07-.058.224-.138c.299-.151.763-.302 1.379-.434C7.378 5.666 9.091 5.5 11 5.5s3.622.166 4.845.428c.616.132 1.08.283 1.379.434.105.053.177.1.224.138q-.07.058-.224.138c-.299.151-.763.302-1.379.434-1.223.262-2.936.428-4.845.428ZM4.486 6.436ZM11 16.5c-1.909 0-3.622-.166-4.845-.428-.616-.132-1.08-.283-1.379-.434a1.3 1.3 0 0 1-.224-.138 1.3 1.3 0 0 1 .224-.138c.299-.151.763-.302 1.379-.434C7.378 14.666 9.091 14.5 11 14.5s3.622.166 4.845.428c.616.132 1.08.283 1.379.434.105.053.177.1.224.138a1.3 1.3 0 0 1-.224.138c-.299.151-.763.302-1.379.434-1.223.262-2.936.428-4.845.428Zm-6.514-1.064ZM11 12.5c-2.46 0-4.672-.222-6.255-.574-.796-.177-1.406-.38-1.805-.59a1.5 1.5 0 0 1-.39-.272.3.3 0 0 1-.047-.064.3.3 0 0 1 .048-.064c.066-.073.189-.167.389-.272.399-.21 1.009-.413 1.805-.59C6.328 9.722 8.54 9.5 11 9.5s4.672.222 6.256.574c.795.177 1.405.38 1.804.59.2.105.323.2.39.272a.3.3 0 0 1 .047.064.3.3 0 0 1-.048.064 1.4 1.4 0 0 1-.389.272c-.399.21-1.009.413-1.804.59-1.584.352-3.796.574-6.256.574Zm-8.501-1.51v.002zm0 .018v.002zm17.002.002v-.002zm0-.018v-.002z'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-terrain .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' fill='%23333' viewBox='0 0 22 22'%3E%3Cpath d='m1.754 13.406 4.453-4.851 3.09 3.09 3.281 3.277.969-.969-3.309-3.312 3.844-4.121 6.148 6.886h1.082v-.855l-7.207-8.07-4.84 5.187L6.169 6.57l-5.48 5.965v.871ZM.688 16.844h20.625v1.375H.688Zm0 0'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-terrain-enabled .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' fill='%2333b5e5' viewBox='0 0 22 22'%3E%3Cpath d='m1.754 13.406 4.453-4.851 3.09 3.09 3.281 3.277.969-.969-3.309-3.312 3.844-4.121 6.148 6.886h1.082v-.855l-7.207-8.07-4.84 5.187L6.169 6.57l-5.48 5.965v.871ZM.688 16.844h20.625v1.375H.688Zm0 0'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23333' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate:disabled .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23aaa' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3Cpath fill='red' d='m14 5 1 1-9 9-1-1z'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-active .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%2333b5e5' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-active-error .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23e58978' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-background .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%2333b5e5' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-background-error .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23e54e33' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-waiting .maplibregl-ctrl-icon{animation:maplibregl-spin 2s linear infinite}@media (forced-colors:active){.maplibregl-ctrl button.maplibregl-ctrl-geolocate .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23fff' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate:disabled .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23999' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3Cpath fill='red' d='m14 5 1 1-9 9-1-1z'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-active .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%2333b5e5' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-active-error .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23e58978' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-background .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%2333b5e5' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-background-error .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23e54e33' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3C/svg%3E")}}@media (forced-colors:active) and (prefers-color-scheme:light){.maplibregl-ctrl button.maplibregl-ctrl-geolocate .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate:disabled .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23666' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3Cpath fill='red' d='m14 5 1 1-9 9-1-1z'/%3E%3C/svg%3E")}}@keyframes maplibregl-spin{0%{transform:rotate(0deg)}to{transform:rotate(1turn)}}a.maplibregl-ctrl-logo{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='88' height='23' fill='none'%3E%3Cpath fill='%23000' fill-opacity='.4' fill-rule='evenodd' d='M17.408 16.796h-1.827l2.501-12.095h.198l3.324 6.533.988 2.19.988-2.19 3.258-6.533h.181l2.6 12.095h-1.81l-1.218-5.644-.362-1.71-.658 1.71-2.929 5.644h-.098l-2.914-5.644-.757-1.71-.345 1.71zm1.958-3.42-.726 3.663a1.255 1.255 0 0 1-1.232 1.011h-1.827a1.255 1.255 0 0 1-1.229-1.509l2.501-12.095a1.255 1.255 0 0 1 1.23-1.001h.197a1.25 1.25 0 0 1 1.12.685l3.19 6.273 3.125-6.263a1.25 1.25 0 0 1 1.123-.695h.181a1.255 1.255 0 0 1 1.227.991l1.443 6.71a5 5 0 0 1 .314-.787l.009-.016a4.6 4.6 0 0 1 1.777-1.887c.782-.46 1.668-.667 2.611-.667a4.6 4.6 0 0 1 1.7.32l.306.134c.21-.16.474-.256.759-.256h1.694a1.255 1.255 0 0 1 1.212.925 1.255 1.255 0 0 1 1.212-.925h1.711c.284 0 .545.094.755.252.613-.3 1.312-.45 2.075-.45 1.356 0 2.557.445 3.482 1.4q.47.48.763 1.064V4.701a1.255 1.255 0 0 1 1.255-1.255h1.86A1.255 1.255 0 0 1 54.44 4.7v9.194h2.217c.19 0 .37.043.532.118v-4.77c0-.356.147-.678.385-.906a2.42 2.42 0 0 1-.682-1.71c0-.665.267-1.253.735-1.7a2.45 2.45 0 0 1 1.722-.674 2.43 2.43 0 0 1 1.705.675q.318.302.504.683V4.7a1.255 1.255 0 0 1 1.255-1.255h1.744A1.255 1.255 0 0 1 65.812 4.7v3.335a4.8 4.8 0 0 1 1.526-.246c.938 0 1.817.214 2.59.69a4.47 4.47 0 0 1 1.67 1.743v-.98a1.255 1.255 0 0 1 1.256-1.256h1.777c.233 0 .451.064.639.174a3.4 3.4 0 0 1 1.567-.372c.346 0 .861.02 1.285.232a1.25 1.25 0 0 1 .689 1.004 4.7 4.7 0 0 1 .853-.588c.795-.44 1.675-.647 2.61-.647 1.385 0 2.65.39 3.525 1.396.836.938 1.168 2.173 1.168 3.528q-.001.515-.056 1.051a1.255 1.255 0 0 1-.947 1.09l.408.952a1.255 1.255 0 0 1-.477 1.552c-.418.268-.92.463-1.458.612-.613.171-1.304.244-2.049.244-1.06 0-2.043-.207-2.886-.698l-.015-.008c-.798-.48-1.419-1.135-1.818-1.963l-.004-.008a5.8 5.8 0 0 1-.548-2.512q0-.429.053-.843a1.3 1.3 0 0 1-.333-.086l-.166-.004c-.223 0-.426.062-.643.228-.03.024-.142.139-.142.59v3.883a1.255 1.255 0 0 1-1.256 1.256h-1.777a1.255 1.255 0 0 1-1.256-1.256V15.69l-.032.057a4.8 4.8 0 0 1-1.86 1.833 5.04 5.04 0 0 1-2.484.634 4.5 4.5 0 0 1-1.935-.424 1.25 1.25 0 0 1-.764.258h-1.71a1.255 1.255 0 0 1-1.256-1.255V7.687a2.4 2.4 0 0 1-.428.625c.253.23.412.561.412.93v7.553a1.255 1.255 0 0 1-1.256 1.255h-1.843a1.25 1.25 0 0 1-.894-.373c-.228.23-.544.373-.894.373H51.32a1.255 1.255 0 0 1-1.256-1.255v-1.251l-.061.117a4.7 4.7 0 0 1-1.782 1.884 4.77 4.77 0 0 1-2.485.67 5.6 5.6 0 0 1-1.485-.188l.009 2.764a1.255 1.255 0 0 1-1.255 1.259h-1.729a1.255 1.255 0 0 1-1.255-1.255v-3.537a1.255 1.255 0 0 1-1.167.793h-1.679a1.25 1.25 0 0 1-.77-.263 4.5 4.5 0 0 1-1.945.429c-.885 0-1.724-.21-2.495-.632l-.017-.01a5 5 0 0 1-1.081-.836 1.255 1.255 0 0 1-1.254 1.312h-1.81a1.255 1.255 0 0 1-1.228-.99l-.782-3.625-2.044 3.939a1.25 1.25 0 0 1-1.115.676h-.098a1.25 1.25 0 0 1-1.116-.68l-2.061-3.994zM35.92 16.63l.207-.114.223-.15q.493-.356.735-.785l.061-.118.033 1.332h1.678V9.242h-1.694l-.033 1.267q-.133-.329-.526-.658l-.032-.028a3.2 3.2 0 0 0-.668-.428l-.27-.12a3.3 3.3 0 0 0-1.235-.23q-1.136-.001-1.974.493a3.36 3.36 0 0 0-1.3 1.382q-.445.89-.444 2.074 0 1.2.51 2.107a3.8 3.8 0 0 0 1.382 1.381 3.9 3.9 0 0 0 1.893.477q.795 0 1.455-.33zm-2.789-5.38q-.576.675-.575 1.762 0 1.102.559 1.794.576.675 1.645.675a2.25 2.25 0 0 0 .934-.19 2.2 2.2 0 0 0 .468-.29l.178-.161a2.2 2.2 0 0 0 .397-.561q.244-.5.244-1.15v-.115q0-.708-.296-1.267l-.043-.077a2.2 2.2 0 0 0-.633-.709l-.13-.086-.047-.028a2.1 2.1 0 0 0-1.073-.285q-1.052 0-1.629.692zm2.316 2.706c.163-.17.28-.407.28-.83v-.114c0-.292-.06-.508-.15-.68a.96.96 0 0 0-.353-.389.85.85 0 0 0-.464-.127c-.4 0-.56.114-.664.239l-.01.012c-.148.174-.275.45-.275.945 0 .506.122.801.27.99.097.11.266.224.68.224.303 0 .504-.09.687-.269zm7.545 1.705a2.6 2.6 0 0 0 .331.423q.319.33.755.548l.173.074q.65.255 1.49.255 1.02 0 1.844-.493a3.45 3.45 0 0 0 1.316-1.4q.493-.904.493-2.089 0-1.909-.988-2.913-.988-1.02-2.584-1.02-.898 0-1.575.347a3 3 0 0 0-.415.262l-.199.166a3.4 3.4 0 0 0-.64.82V9.242h-1.712v11.553h1.729l-.017-5.134zm.53-1.138q.206.29.48.5l.155.11.053.034q.51.296 1.119.297 1.07 0 1.645-.675.577-.69.576-1.762 0-1.119-.576-1.777-.558-.675-1.645-.675-.435 0-.835.16a2 2 0 0 0-.284.136 2 2 0 0 0-.363.254 2.2 2.2 0 0 0-.46.569l-.082.162a2.6 2.6 0 0 0-.213 1.072v.115q0 .707.296 1.267l.135.211zm.964-.818a1.1 1.1 0 0 0 .367.385.94.94 0 0 0 .476.118c.423 0 .59-.117.687-.23.159-.194.28-.478.28-.95 0-.53-.133-.8-.266-.952l-.021-.025c-.078-.094-.231-.221-.68-.221a1 1 0 0 0-.503.135l-.012.007a.86.86 0 0 0-.335.343c-.073.133-.132.324-.132.614v.115a1.4 1.4 0 0 0 .14.66zm15.7-6.222q.347-.346.346-.856a1.05 1.05 0 0 0-.345-.79 1.18 1.18 0 0 0-.84-.329q-.51 0-.855.33a1.05 1.05 0 0 0-.346.79q0 .51.346.855.345.346.856.346.51 0 .839-.346zm4.337 9.314.033-1.332q.191.403.59.747l.098.081a4 4 0 0 0 .316.224l.223.122a3.2 3.2 0 0 0 1.44.322 3.8 3.8 0 0 0 1.875-.477 3.5 3.5 0 0 0 1.382-1.366q.527-.89.526-2.09 0-1.184-.444-2.073a3.24 3.24 0 0 0-1.283-1.399q-.823-.51-1.942-.51a3.5 3.5 0 0 0-1.527.344l-.086.043-.165.09a3 3 0 0 0-.33.214q-.432.315-.656.707a2 2 0 0 0-.099.198l.082-1.283V4.701h-1.744v12.095zm.473-2.509a2.5 2.5 0 0 0 .566.7q.117.098.245.18l.144.08a2.1 2.1 0 0 0 .975.232q1.07 0 1.645-.675.576-.69.576-1.778 0-1.102-.576-1.777-.56-.691-1.645-.692a2.2 2.2 0 0 0-1.015.235q-.22.113-.415.282l-.15.142a2.1 2.1 0 0 0-.42.594q-.223.479-.223 1.1v.115q0 .705.293 1.26zm2.616-.293c.157-.191.28-.479.28-.967 0-.51-.13-.79-.276-.961l-.021-.026c-.082-.1-.232-.225-.67-.225a.87.87 0 0 0-.681.279l-.012.011c-.154.155-.274.38-.274.807v.115c0 .285.057.499.144.669a1.1 1.1 0 0 0 .367.405c.137.082.28.123.455.123.423 0 .59-.118.686-.23zm8.266-3.013q.345-.13.724-.14l.069-.002q.493 0 .642.099l.247-1.794q-.196-.099-.717-.099a2.3 2.3 0 0 0-.545.063 2 2 0 0 0-.411.148 2.2 2.2 0 0 0-.4.249 2.5 2.5 0 0 0-.485.499 2.7 2.7 0 0 0-.32.581l-.05.137v-1.48h-1.778v7.553h1.777v-3.884q0-.546.159-.943a1.5 1.5 0 0 1 .466-.636 2.5 2.5 0 0 1 .399-.253 2 2 0 0 1 .224-.099zm9.784 2.656.05-.922q0-1.743-.856-2.698-.838-.97-2.584-.97-1.119-.001-2.007.493a3.46 3.46 0 0 0-1.4 1.382q-.493.906-.493 2.106 0 1.07.428 1.975.428.89 1.332 1.432.906.526 2.255.526.973 0 1.668-.185l.044-.012.135-.04q.613-.184.984-.421l-.542-1.267q-.3.162-.642.274l-.297.087q-.51.131-1.3.131-.954 0-1.497-.444a1.6 1.6 0 0 1-.192-.193q-.366-.44-.512-1.234l-.004-.021zm-5.427-1.256-.003.022h3.752v-.138q-.011-.727-.288-1.118a1 1 0 0 0-.156-.176q-.46-.428-1.316-.428-.986 0-1.494.604-.379.45-.494 1.234zm-27.053 2.77V4.7h-1.86v12.095h5.333V15.15zm7.103-5.908v7.553h-1.843V9.242h1.843z'/%3E%3Cpath fill='%23fff' d='m19.63 11.151-.757-1.71-.345 1.71-1.12 5.644h-1.827L18.083 4.7h.197l3.325 6.533.988 2.19.988-2.19L26.839 4.7h.181l2.6 12.095h-1.81l-1.218-5.644-.362-1.71-.658 1.71-2.93 5.644h-.098l-2.913-5.644zm14.836 5.81q-1.02 0-1.893-.478a3.8 3.8 0 0 1-1.381-1.382q-.51-.906-.51-2.106 0-1.185.444-2.074a3.36 3.36 0 0 1 1.3-1.382q.839-.494 1.974-.494a3.3 3.3 0 0 1 1.234.231 3.3 3.3 0 0 1 .97.575q.396.33.527.659l.033-1.267h1.694v7.553H37.18l-.033-1.332q-.279.593-1.02 1.053a3.17 3.17 0 0 1-1.662.444zm.296-1.482q.938 0 1.58-.642.642-.66.642-1.711v-.115q0-.708-.296-1.267a2.2 2.2 0 0 0-.807-.872 2.1 2.1 0 0 0-1.119-.313q-1.053 0-1.629.692-.575.675-.575 1.76 0 1.103.559 1.795.577.675 1.645.675zm6.521-6.237h1.711v1.4q.906-1.597 2.83-1.597 1.596 0 2.584 1.02.988 1.005.988 2.914 0 1.185-.493 2.09a3.46 3.46 0 0 1-1.316 1.399 3.5 3.5 0 0 1-1.844.493q-.954 0-1.662-.329a2.67 2.67 0 0 1-1.086-.97l.017 5.134h-1.728zm4.048 6.22q1.07 0 1.645-.674.577-.69.576-1.762 0-1.119-.576-1.777-.558-.675-1.645-.675-.592 0-1.12.296-.51.28-.822.823-.296.527-.296 1.234v.115q0 .708.296 1.267.313.543.823.855.51.296 1.119.297z'/%3E%3Cpath fill='%23e1e3e9' d='M51.325 4.7h1.86v10.45h3.473v1.646h-5.333zm7.12 4.542h1.843v7.553h-1.843zm.905-1.415a1.16 1.16 0 0 1-.856-.346 1.17 1.17 0 0 1-.346-.856 1.05 1.05 0 0 1 .346-.79q.346-.329.856-.329.494 0 .839.33a1.05 1.05 0 0 1 .345.79 1.16 1.16 0 0 1-.345.855q-.33.346-.84.346zm7.875 9.133a3.17 3.17 0 0 1-1.662-.444q-.723-.46-1.004-1.053l-.033 1.332h-1.71V4.701h1.743v4.657l-.082 1.283q.279-.658 1.086-1.119a3.5 3.5 0 0 1 1.778-.477q1.119 0 1.942.51a3.24 3.24 0 0 1 1.283 1.4q.445.888.444 2.072 0 1.201-.526 2.09a3.5 3.5 0 0 1-1.382 1.366 3.8 3.8 0 0 1-1.876.477zm-.296-1.481q1.069 0 1.645-.675.577-.69.577-1.778 0-1.102-.577-1.776-.56-.691-1.645-.692a2.12 2.12 0 0 0-1.58.659q-.642.641-.642 1.694v.115q0 .71.296 1.267a2.4 2.4 0 0 0 .807.872 2.1 2.1 0 0 0 1.119.313zm5.927-6.237h1.777v1.481q.263-.757.856-1.217a2.14 2.14 0 0 1 1.349-.46q.527 0 .724.098l-.247 1.794q-.149-.099-.642-.099-.774 0-1.416.494-.626.493-.626 1.58v3.883h-1.777V9.242zm9.534 7.718q-1.35 0-2.255-.526-.904-.543-1.332-1.432a4.6 4.6 0 0 1-.428-1.975q0-1.2.493-2.106a3.46 3.46 0 0 1 1.4-1.382q.889-.495 2.007-.494 1.744 0 2.584.97.855.956.856 2.7 0 .444-.05.92h-5.43q.18 1.005.708 1.45.542.443 1.497.443.79 0 1.3-.131a4 4 0 0 0 .938-.362l.542 1.267q-.411.263-1.119.46-.708.198-1.711.197zm1.596-4.558q.016-1.02-.444-1.432-.46-.428-1.316-.428-1.728 0-1.991 1.86z'/%3E%3Cpath d='M5.074 15.948a.484.657 0 0 0-.486.659v1.84a.484.657 0 0 0 .486.659h4.101a.484.657 0 0 0 .486-.659v-1.84a.484.657 0 0 0-.486-.659zm3.56 1.16H5.617v.838h3.017z' style='fill:%23fff;fill-rule:evenodd;stroke-width:1.03600001'/%3E%3Cg style='stroke-width:1.12603545'%3E%3Cpath d='M-9.408-1.416c-3.833-.025-7.056 2.912-7.08 6.615-.02 3.08 1.653 4.832 3.107 6.268.903.892 1.721 1.74 2.32 2.902l-.525-.004c-.543-.003-.992.304-1.24.639a1.87 1.87 0 0 0-.362 1.121l-.011 1.877c-.003.402.104.787.347 1.125.244.338.688.653 1.23.656l4.142.028c.542.003.99-.306 1.238-.641a1.87 1.87 0 0 0 .363-1.121l.012-1.875a1.87 1.87 0 0 0-.348-1.127c-.243-.338-.688-.653-1.23-.656l-.518-.004c.597-1.145 1.425-1.983 2.348-2.87 1.473-1.414 3.18-3.149 3.2-6.226-.016-3.59-2.923-6.684-6.993-6.707m-.006 1.1v.002c3.274.02 5.92 2.532 5.9 5.6-.017 2.706-1.39 4.026-2.863 5.44-1.034.994-2.118 2.033-2.814 3.633-.018.041-.052.055-.075.065q-.013.004-.02.01a.34.34 0 0 1-.226.084.34.34 0 0 1-.224-.086l-.092-.077c-.699-1.615-1.768-2.669-2.781-3.67-1.454-1.435-2.797-2.762-2.78-5.478.02-3.067 2.7-5.545 5.975-5.523m-.02 2.826c-1.62-.01-2.944 1.315-2.955 2.96-.01 1.646 1.295 2.988 2.916 2.999h.002c1.621.01 2.943-1.316 2.953-2.961.011-1.646-1.294-2.988-2.916-2.998m-.005 1.1c1.017.006 1.829.83 1.822 1.89s-.83 1.874-1.848 1.867c-1.018-.006-1.829-.83-1.822-1.89s.83-1.874 1.848-1.868m-2.155 11.857 4.14.025c.271.002.49.305.487.676l-.013 1.875c-.003.37-.224.67-.495.668l-4.14-.025c-.27-.002-.487-.306-.485-.676l.012-1.875c.003-.37.224-.67.494-.668' style='color:%23000;font-style:normal;font-variant:normal;font-weight:400;font-stretch:normal;font-size:medium;line-height:normal;font-family:sans-serif;font-variant-ligatures:normal;font-variant-position:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-alternates:normal;font-feature-settings:normal;text-indent:0;text-align:start;text-decoration:none;text-decoration-line:none;text-decoration-style:solid;text-decoration-color:%23000;letter-spacing:normal;word-spacing:normal;text-transform:none;writing-mode:lr-tb;direction:ltr;text-orientation:mixed;dominant-baseline:auto;baseline-shift:baseline;text-anchor:start;white-space:normal;shape-padding:0;clip-rule:evenodd;display:inline;overflow:visible;visibility:visible;opacity:1;isolation:auto;mix-blend-mode:normal;color-interpolation:sRGB;color-interpolation-filters:linearRGB;solid-color:%23000;solid-opacity:1;vector-effect:none;fill:%23000;fill-opacity:.4;fill-rule:evenodd;stroke:none;stroke-width:2.47727823;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;color-rendering:auto;image-rendering:auto;shape-rendering:auto;text-rendering:auto' transform='translate(15.553 2.85)scale(.88807)'/%3E%3Cpath d='M-9.415-.316C-12.69-.338-15.37 2.14-15.39 5.207c-.017 2.716 1.326 4.041 2.78 5.477 1.013 1 2.081 2.055 2.78 3.67l.092.076a.34.34 0 0 0 .225.086.34.34 0 0 0 .227-.083l.019-.01c.022-.009.057-.024.074-.064.697-1.6 1.78-2.64 2.814-3.634 1.473-1.414 2.847-2.733 2.864-5.44.02-3.067-2.627-5.58-5.901-5.601m-.057 8.784c1.621.011 2.944-1.315 2.955-2.96.01-1.646-1.295-2.988-2.916-2.999-1.622-.01-2.945 1.315-2.955 2.96s1.295 2.989 2.916 3' style='clip-rule:evenodd;fill:%23e1e3e9;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:2.47727823;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:.4' transform='translate(15.553 2.85)scale(.88807)'/%3E%3Cpath d='M-11.594 15.465c-.27-.002-.492.297-.494.668l-.012 1.876c-.003.371.214.673.485.675l4.14.027c.271.002.492-.298.495-.668l.012-1.877c.003-.37-.215-.672-.485-.674z' style='clip-rule:evenodd;fill:%23fff;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:2.47727823;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:.4' transform='translate(15.553 2.85)scale(.88807)'/%3E%3C/g%3E%3C/svg%3E");background-repeat:no-repeat;cursor:pointer;display:block;height:23px;margin:0 0 -4px -4px;overflow:hidden;width:88px}a.maplibregl-ctrl-logo.maplibregl-compact{width:14px}@media (forced-colors:active){a.maplibregl-ctrl-logo{background-color:transparent;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='88' height='23' fill='none'%3E%3Cpath fill='%23000' fill-opacity='.4' fill-rule='evenodd' d='M17.408 16.796h-1.827l2.501-12.095h.198l3.324 6.533.988 2.19.988-2.19 3.258-6.533h.181l2.6 12.095h-1.81l-1.218-5.644-.362-1.71-.658 1.71-2.929 5.644h-.098l-2.914-5.644-.757-1.71-.345 1.71zm1.958-3.42-.726 3.663a1.255 1.255 0 0 1-1.232 1.011h-1.827a1.255 1.255 0 0 1-1.229-1.509l2.501-12.095a1.255 1.255 0 0 1 1.23-1.001h.197a1.25 1.25 0 0 1 1.12.685l3.19 6.273 3.125-6.263a1.25 1.25 0 0 1 1.123-.695h.181a1.255 1.255 0 0 1 1.227.991l1.443 6.71a5 5 0 0 1 .314-.787l.009-.016a4.6 4.6 0 0 1 1.777-1.887c.782-.46 1.668-.667 2.611-.667a4.6 4.6 0 0 1 1.7.32l.306.134c.21-.16.474-.256.759-.256h1.694a1.255 1.255 0 0 1 1.212.925 1.255 1.255 0 0 1 1.212-.925h1.711c.284 0 .545.094.755.252.613-.3 1.312-.45 2.075-.45 1.356 0 2.557.445 3.482 1.4q.47.48.763 1.064V4.701a1.255 1.255 0 0 1 1.255-1.255h1.86A1.255 1.255 0 0 1 54.44 4.7v9.194h2.217c.19 0 .37.043.532.118v-4.77c0-.356.147-.678.385-.906a2.42 2.42 0 0 1-.682-1.71c0-.665.267-1.253.735-1.7a2.45 2.45 0 0 1 1.722-.674 2.43 2.43 0 0 1 1.705.675q.318.302.504.683V4.7a1.255 1.255 0 0 1 1.255-1.255h1.744A1.255 1.255 0 0 1 65.812 4.7v3.335a4.8 4.8 0 0 1 1.526-.246c.938 0 1.817.214 2.59.69a4.47 4.47 0 0 1 1.67 1.743v-.98a1.255 1.255 0 0 1 1.256-1.256h1.777c.233 0 .451.064.639.174a3.4 3.4 0 0 1 1.567-.372c.346 0 .861.02 1.285.232a1.25 1.25 0 0 1 .689 1.004 4.7 4.7 0 0 1 .853-.588c.795-.44 1.675-.647 2.61-.647 1.385 0 2.65.39 3.525 1.396.836.938 1.168 2.173 1.168 3.528q-.001.515-.056 1.051a1.255 1.255 0 0 1-.947 1.09l.408.952a1.255 1.255 0 0 1-.477 1.552c-.418.268-.92.463-1.458.612-.613.171-1.304.244-2.049.244-1.06 0-2.043-.207-2.886-.698l-.015-.008c-.798-.48-1.419-1.135-1.818-1.963l-.004-.008a5.8 5.8 0 0 1-.548-2.512q0-.429.053-.843a1.3 1.3 0 0 1-.333-.086l-.166-.004c-.223 0-.426.062-.643.228-.03.024-.142.139-.142.59v3.883a1.255 1.255 0 0 1-1.256 1.256h-1.777a1.255 1.255 0 0 1-1.256-1.256V15.69l-.032.057a4.8 4.8 0 0 1-1.86 1.833 5.04 5.04 0 0 1-2.484.634 4.5 4.5 0 0 1-1.935-.424 1.25 1.25 0 0 1-.764.258h-1.71a1.255 1.255 0 0 1-1.256-1.255V7.687a2.4 2.4 0 0 1-.428.625c.253.23.412.561.412.93v7.553a1.255 1.255 0 0 1-1.256 1.255h-1.843a1.25 1.25 0 0 1-.894-.373c-.228.23-.544.373-.894.373H51.32a1.255 1.255 0 0 1-1.256-1.255v-1.251l-.061.117a4.7 4.7 0 0 1-1.782 1.884 4.77 4.77 0 0 1-2.485.67 5.6 5.6 0 0 1-1.485-.188l.009 2.764a1.255 1.255 0 0 1-1.255 1.259h-1.729a1.255 1.255 0 0 1-1.255-1.255v-3.537a1.255 1.255 0 0 1-1.167.793h-1.679a1.25 1.25 0 0 1-.77-.263 4.5 4.5 0 0 1-1.945.429c-.885 0-1.724-.21-2.495-.632l-.017-.01a5 5 0 0 1-1.081-.836 1.255 1.255 0 0 1-1.254 1.312h-1.81a1.255 1.255 0 0 1-1.228-.99l-.782-3.625-2.044 3.939a1.25 1.25 0 0 1-1.115.676h-.098a1.25 1.25 0 0 1-1.116-.68l-2.061-3.994zM35.92 16.63l.207-.114.223-.15q.493-.356.735-.785l.061-.118.033 1.332h1.678V9.242h-1.694l-.033 1.267q-.133-.329-.526-.658l-.032-.028a3.2 3.2 0 0 0-.668-.428l-.27-.12a3.3 3.3 0 0 0-1.235-.23q-1.136-.001-1.974.493a3.36 3.36 0 0 0-1.3 1.382q-.445.89-.444 2.074 0 1.2.51 2.107a3.8 3.8 0 0 0 1.382 1.381 3.9 3.9 0 0 0 1.893.477q.795 0 1.455-.33zm-2.789-5.38q-.576.675-.575 1.762 0 1.102.559 1.794.576.675 1.645.675a2.25 2.25 0 0 0 .934-.19 2.2 2.2 0 0 0 .468-.29l.178-.161a2.2 2.2 0 0 0 .397-.561q.244-.5.244-1.15v-.115q0-.708-.296-1.267l-.043-.077a2.2 2.2 0 0 0-.633-.709l-.13-.086-.047-.028a2.1 2.1 0 0 0-1.073-.285q-1.052 0-1.629.692zm2.316 2.706c.163-.17.28-.407.28-.83v-.114c0-.292-.06-.508-.15-.68a.96.96 0 0 0-.353-.389.85.85 0 0 0-.464-.127c-.4 0-.56.114-.664.239l-.01.012c-.148.174-.275.45-.275.945 0 .506.122.801.27.99.097.11.266.224.68.224.303 0 .504-.09.687-.269zm7.545 1.705a2.6 2.6 0 0 0 .331.423q.319.33.755.548l.173.074q.65.255 1.49.255 1.02 0 1.844-.493a3.45 3.45 0 0 0 1.316-1.4q.493-.904.493-2.089 0-1.909-.988-2.913-.988-1.02-2.584-1.02-.898 0-1.575.347a3 3 0 0 0-.415.262l-.199.166a3.4 3.4 0 0 0-.64.82V9.242h-1.712v11.553h1.729l-.017-5.134zm.53-1.138q.206.29.48.5l.155.11.053.034q.51.296 1.119.297 1.07 0 1.645-.675.577-.69.576-1.762 0-1.119-.576-1.777-.558-.675-1.645-.675-.435 0-.835.16a2 2 0 0 0-.284.136 2 2 0 0 0-.363.254 2.2 2.2 0 0 0-.46.569l-.082.162a2.6 2.6 0 0 0-.213 1.072v.115q0 .707.296 1.267l.135.211zm.964-.818a1.1 1.1 0 0 0 .367.385.94.94 0 0 0 .476.118c.423 0 .59-.117.687-.23.159-.194.28-.478.28-.95 0-.53-.133-.8-.266-.952l-.021-.025c-.078-.094-.231-.221-.68-.221a1 1 0 0 0-.503.135l-.012.007a.86.86 0 0 0-.335.343c-.073.133-.132.324-.132.614v.115a1.4 1.4 0 0 0 .14.66zm15.7-6.222q.347-.346.346-.856a1.05 1.05 0 0 0-.345-.79 1.18 1.18 0 0 0-.84-.329q-.51 0-.855.33a1.05 1.05 0 0 0-.346.79q0 .51.346.855.345.346.856.346.51 0 .839-.346zm4.337 9.314.033-1.332q.191.403.59.747l.098.081a4 4 0 0 0 .316.224l.223.122a3.2 3.2 0 0 0 1.44.322 3.8 3.8 0 0 0 1.875-.477 3.5 3.5 0 0 0 1.382-1.366q.527-.89.526-2.09 0-1.184-.444-2.073a3.24 3.24 0 0 0-1.283-1.399q-.823-.51-1.942-.51a3.5 3.5 0 0 0-1.527.344l-.086.043-.165.09a3 3 0 0 0-.33.214q-.432.315-.656.707a2 2 0 0 0-.099.198l.082-1.283V4.701h-1.744v12.095zm.473-2.509a2.5 2.5 0 0 0 .566.7q.117.098.245.18l.144.08a2.1 2.1 0 0 0 .975.232q1.07 0 1.645-.675.576-.69.576-1.778 0-1.102-.576-1.777-.56-.691-1.645-.692a2.2 2.2 0 0 0-1.015.235q-.22.113-.415.282l-.15.142a2.1 2.1 0 0 0-.42.594q-.223.479-.223 1.1v.115q0 .705.293 1.26zm2.616-.293c.157-.191.28-.479.28-.967 0-.51-.13-.79-.276-.961l-.021-.026c-.082-.1-.232-.225-.67-.225a.87.87 0 0 0-.681.279l-.012.011c-.154.155-.274.38-.274.807v.115c0 .285.057.499.144.669a1.1 1.1 0 0 0 .367.405c.137.082.28.123.455.123.423 0 .59-.118.686-.23zm8.266-3.013q.345-.13.724-.14l.069-.002q.493 0 .642.099l.247-1.794q-.196-.099-.717-.099a2.3 2.3 0 0 0-.545.063 2 2 0 0 0-.411.148 2.2 2.2 0 0 0-.4.249 2.5 2.5 0 0 0-.485.499 2.7 2.7 0 0 0-.32.581l-.05.137v-1.48h-1.778v7.553h1.777v-3.884q0-.546.159-.943a1.5 1.5 0 0 1 .466-.636 2.5 2.5 0 0 1 .399-.253 2 2 0 0 1 .224-.099zm9.784 2.656.05-.922q0-1.743-.856-2.698-.838-.97-2.584-.97-1.119-.001-2.007.493a3.46 3.46 0 0 0-1.4 1.382q-.493.906-.493 2.106 0 1.07.428 1.975.428.89 1.332 1.432.906.526 2.255.526.973 0 1.668-.185l.044-.012.135-.04q.613-.184.984-.421l-.542-1.267q-.3.162-.642.274l-.297.087q-.51.131-1.3.131-.954 0-1.497-.444a1.6 1.6 0 0 1-.192-.193q-.366-.44-.512-1.234l-.004-.021zm-5.427-1.256-.003.022h3.752v-.138q-.011-.727-.288-1.118a1 1 0 0 0-.156-.176q-.46-.428-1.316-.428-.986 0-1.494.604-.379.45-.494 1.234zm-27.053 2.77V4.7h-1.86v12.095h5.333V15.15zm7.103-5.908v7.553h-1.843V9.242h1.843z'/%3E%3Cpath fill='%23fff' d='m19.63 11.151-.757-1.71-.345 1.71-1.12 5.644h-1.827L18.083 4.7h.197l3.325 6.533.988 2.19.988-2.19L26.839 4.7h.181l2.6 12.095h-1.81l-1.218-5.644-.362-1.71-.658 1.71-2.93 5.644h-.098l-2.913-5.644zm14.836 5.81q-1.02 0-1.893-.478a3.8 3.8 0 0 1-1.381-1.382q-.51-.906-.51-2.106 0-1.185.444-2.074a3.36 3.36 0 0 1 1.3-1.382q.839-.494 1.974-.494a3.3 3.3 0 0 1 1.234.231 3.3 3.3 0 0 1 .97.575q.396.33.527.659l.033-1.267h1.694v7.553H37.18l-.033-1.332q-.279.593-1.02 1.053a3.17 3.17 0 0 1-1.662.444zm.296-1.482q.938 0 1.58-.642.642-.66.642-1.711v-.115q0-.708-.296-1.267a2.2 2.2 0 0 0-.807-.872 2.1 2.1 0 0 0-1.119-.313q-1.053 0-1.629.692-.575.675-.575 1.76 0 1.103.559 1.795.577.675 1.645.675zm6.521-6.237h1.711v1.4q.906-1.597 2.83-1.597 1.596 0 2.584 1.02.988 1.005.988 2.914 0 1.185-.493 2.09a3.46 3.46 0 0 1-1.316 1.399 3.5 3.5 0 0 1-1.844.493q-.954 0-1.662-.329a2.67 2.67 0 0 1-1.086-.97l.017 5.134h-1.728zm4.048 6.22q1.07 0 1.645-.674.577-.69.576-1.762 0-1.119-.576-1.777-.558-.675-1.645-.675-.592 0-1.12.296-.51.28-.822.823-.296.527-.296 1.234v.115q0 .708.296 1.267.313.543.823.855.51.296 1.119.297z'/%3E%3Cpath fill='%23e1e3e9' d='M51.325 4.7h1.86v10.45h3.473v1.646h-5.333zm7.12 4.542h1.843v7.553h-1.843zm.905-1.415a1.16 1.16 0 0 1-.856-.346 1.17 1.17 0 0 1-.346-.856 1.05 1.05 0 0 1 .346-.79q.346-.329.856-.329.494 0 .839.33a1.05 1.05 0 0 1 .345.79 1.16 1.16 0 0 1-.345.855q-.33.346-.84.346zm7.875 9.133a3.17 3.17 0 0 1-1.662-.444q-.723-.46-1.004-1.053l-.033 1.332h-1.71V4.701h1.743v4.657l-.082 1.283q.279-.658 1.086-1.119a3.5 3.5 0 0 1 1.778-.477q1.119 0 1.942.51a3.24 3.24 0 0 1 1.283 1.4q.445.888.444 2.072 0 1.201-.526 2.09a3.5 3.5 0 0 1-1.382 1.366 3.8 3.8 0 0 1-1.876.477zm-.296-1.481q1.069 0 1.645-.675.577-.69.577-1.778 0-1.102-.577-1.776-.56-.691-1.645-.692a2.12 2.12 0 0 0-1.58.659q-.642.641-.642 1.694v.115q0 .71.296 1.267a2.4 2.4 0 0 0 .807.872 2.1 2.1 0 0 0 1.119.313zm5.927-6.237h1.777v1.481q.263-.757.856-1.217a2.14 2.14 0 0 1 1.349-.46q.527 0 .724.098l-.247 1.794q-.149-.099-.642-.099-.774 0-1.416.494-.626.493-.626 1.58v3.883h-1.777V9.242zm9.534 7.718q-1.35 0-2.255-.526-.904-.543-1.332-1.432a4.6 4.6 0 0 1-.428-1.975q0-1.2.493-2.106a3.46 3.46 0 0 1 1.4-1.382q.889-.495 2.007-.494 1.744 0 2.584.97.855.956.856 2.7 0 .444-.05.92h-5.43q.18 1.005.708 1.45.542.443 1.497.443.79 0 1.3-.131a4 4 0 0 0 .938-.362l.542 1.267q-.411.263-1.119.46-.708.198-1.711.197zm1.596-4.558q.016-1.02-.444-1.432-.46-.428-1.316-.428-1.728 0-1.991 1.86z'/%3E%3Cpath d='M5.074 15.948a.484.657 0 0 0-.486.659v1.84a.484.657 0 0 0 .486.659h4.101a.484.657 0 0 0 .486-.659v-1.84a.484.657 0 0 0-.486-.659zm3.56 1.16H5.617v.838h3.017z' style='fill:%23fff;fill-rule:evenodd;stroke-width:1.03600001'/%3E%3Cg style='stroke-width:1.12603545'%3E%3Cpath d='M-9.408-1.416c-3.833-.025-7.056 2.912-7.08 6.615-.02 3.08 1.653 4.832 3.107 6.268.903.892 1.721 1.74 2.32 2.902l-.525-.004c-.543-.003-.992.304-1.24.639a1.87 1.87 0 0 0-.362 1.121l-.011 1.877c-.003.402.104.787.347 1.125.244.338.688.653 1.23.656l4.142.028c.542.003.99-.306 1.238-.641a1.87 1.87 0 0 0 .363-1.121l.012-1.875a1.87 1.87 0 0 0-.348-1.127c-.243-.338-.688-.653-1.23-.656l-.518-.004c.597-1.145 1.425-1.983 2.348-2.87 1.473-1.414 3.18-3.149 3.2-6.226-.016-3.59-2.923-6.684-6.993-6.707m-.006 1.1v.002c3.274.02 5.92 2.532 5.9 5.6-.017 2.706-1.39 4.026-2.863 5.44-1.034.994-2.118 2.033-2.814 3.633-.018.041-.052.055-.075.065q-.013.004-.02.01a.34.34 0 0 1-.226.084.34.34 0 0 1-.224-.086l-.092-.077c-.699-1.615-1.768-2.669-2.781-3.67-1.454-1.435-2.797-2.762-2.78-5.478.02-3.067 2.7-5.545 5.975-5.523m-.02 2.826c-1.62-.01-2.944 1.315-2.955 2.96-.01 1.646 1.295 2.988 2.916 2.999h.002c1.621.01 2.943-1.316 2.953-2.961.011-1.646-1.294-2.988-2.916-2.998m-.005 1.1c1.017.006 1.829.83 1.822 1.89s-.83 1.874-1.848 1.867c-1.018-.006-1.829-.83-1.822-1.89s.83-1.874 1.848-1.868m-2.155 11.857 4.14.025c.271.002.49.305.487.676l-.013 1.875c-.003.37-.224.67-.495.668l-4.14-.025c-.27-.002-.487-.306-.485-.676l.012-1.875c.003-.37.224-.67.494-.668' style='color:%23000;font-style:normal;font-variant:normal;font-weight:400;font-stretch:normal;font-size:medium;line-height:normal;font-family:sans-serif;font-variant-ligatures:normal;font-variant-position:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-alternates:normal;font-feature-settings:normal;text-indent:0;text-align:start;text-decoration:none;text-decoration-line:none;text-decoration-style:solid;text-decoration-color:%23000;letter-spacing:normal;word-spacing:normal;text-transform:none;writing-mode:lr-tb;direction:ltr;text-orientation:mixed;dominant-baseline:auto;baseline-shift:baseline;text-anchor:start;white-space:normal;shape-padding:0;clip-rule:evenodd;display:inline;overflow:visible;visibility:visible;opacity:1;isolation:auto;mix-blend-mode:normal;color-interpolation:sRGB;color-interpolation-filters:linearRGB;solid-color:%23000;solid-opacity:1;vector-effect:none;fill:%23000;fill-opacity:.4;fill-rule:evenodd;stroke:none;stroke-width:2.47727823;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;color-rendering:auto;image-rendering:auto;shape-rendering:auto;text-rendering:auto' transform='translate(15.553 2.85)scale(.88807)'/%3E%3Cpath d='M-9.415-.316C-12.69-.338-15.37 2.14-15.39 5.207c-.017 2.716 1.326 4.041 2.78 5.477 1.013 1 2.081 2.055 2.78 3.67l.092.076a.34.34 0 0 0 .225.086.34.34 0 0 0 .227-.083l.019-.01c.022-.009.057-.024.074-.064.697-1.6 1.78-2.64 2.814-3.634 1.473-1.414 2.847-2.733 2.864-5.44.02-3.067-2.627-5.58-5.901-5.601m-.057 8.784c1.621.011 2.944-1.315 2.955-2.96.01-1.646-1.295-2.988-2.916-2.999-1.622-.01-2.945 1.315-2.955 2.96s1.295 2.989 2.916 3' style='clip-rule:evenodd;fill:%23e1e3e9;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:2.47727823;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:.4' transform='translate(15.553 2.85)scale(.88807)'/%3E%3Cpath d='M-11.594 15.465c-.27-.002-.492.297-.494.668l-.012 1.876c-.003.371.214.673.485.675l4.14.027c.271.002.492-.298.495-.668l.012-1.877c.003-.37-.215-.672-.485-.674z' style='clip-rule:evenodd;fill:%23fff;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:2.47727823;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:.4' transform='translate(15.553 2.85)scale(.88807)'/%3E%3C/g%3E%3C/svg%3E")}}@media (forced-colors:active) and (prefers-color-scheme:light){a.maplibregl-ctrl-logo{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='88' height='23' fill='none'%3E%3Cpath fill='%23000' fill-opacity='.4' fill-rule='evenodd' d='M17.408 16.796h-1.827l2.501-12.095h.198l3.324 6.533.988 2.19.988-2.19 3.258-6.533h.181l2.6 12.095h-1.81l-1.218-5.644-.362-1.71-.658 1.71-2.929 5.644h-.098l-2.914-5.644-.757-1.71-.345 1.71zm1.958-3.42-.726 3.663a1.255 1.255 0 0 1-1.232 1.011h-1.827a1.255 1.255 0 0 1-1.229-1.509l2.501-12.095a1.255 1.255 0 0 1 1.23-1.001h.197a1.25 1.25 0 0 1 1.12.685l3.19 6.273 3.125-6.263a1.25 1.25 0 0 1 1.123-.695h.181a1.255 1.255 0 0 1 1.227.991l1.443 6.71a5 5 0 0 1 .314-.787l.009-.016a4.6 4.6 0 0 1 1.777-1.887c.782-.46 1.668-.667 2.611-.667a4.6 4.6 0 0 1 1.7.32l.306.134c.21-.16.474-.256.759-.256h1.694a1.255 1.255 0 0 1 1.212.925 1.255 1.255 0 0 1 1.212-.925h1.711c.284 0 .545.094.755.252.613-.3 1.312-.45 2.075-.45 1.356 0 2.557.445 3.482 1.4q.47.48.763 1.064V4.701a1.255 1.255 0 0 1 1.255-1.255h1.86A1.255 1.255 0 0 1 54.44 4.7v9.194h2.217c.19 0 .37.043.532.118v-4.77c0-.356.147-.678.385-.906a2.42 2.42 0 0 1-.682-1.71c0-.665.267-1.253.735-1.7a2.45 2.45 0 0 1 1.722-.674 2.43 2.43 0 0 1 1.705.675q.318.302.504.683V4.7a1.255 1.255 0 0 1 1.255-1.255h1.744A1.255 1.255 0 0 1 65.812 4.7v3.335a4.8 4.8 0 0 1 1.526-.246c.938 0 1.817.214 2.59.69a4.47 4.47 0 0 1 1.67 1.743v-.98a1.255 1.255 0 0 1 1.256-1.256h1.777c.233 0 .451.064.639.174a3.4 3.4 0 0 1 1.567-.372c.346 0 .861.02 1.285.232a1.25 1.25 0 0 1 .689 1.004 4.7 4.7 0 0 1 .853-.588c.795-.44 1.675-.647 2.61-.647 1.385 0 2.65.39 3.525 1.396.836.938 1.168 2.173 1.168 3.528q-.001.515-.056 1.051a1.255 1.255 0 0 1-.947 1.09l.408.952a1.255 1.255 0 0 1-.477 1.552c-.418.268-.92.463-1.458.612-.613.171-1.304.244-2.049.244-1.06 0-2.043-.207-2.886-.698l-.015-.008c-.798-.48-1.419-1.135-1.818-1.963l-.004-.008a5.8 5.8 0 0 1-.548-2.512q0-.429.053-.843a1.3 1.3 0 0 1-.333-.086l-.166-.004c-.223 0-.426.062-.643.228-.03.024-.142.139-.142.59v3.883a1.255 1.255 0 0 1-1.256 1.256h-1.777a1.255 1.255 0 0 1-1.256-1.256V15.69l-.032.057a4.8 4.8 0 0 1-1.86 1.833 5.04 5.04 0 0 1-2.484.634 4.5 4.5 0 0 1-1.935-.424 1.25 1.25 0 0 1-.764.258h-1.71a1.255 1.255 0 0 1-1.256-1.255V7.687a2.4 2.4 0 0 1-.428.625c.253.23.412.561.412.93v7.553a1.255 1.255 0 0 1-1.256 1.255h-1.843a1.25 1.25 0 0 1-.894-.373c-.228.23-.544.373-.894.373H51.32a1.255 1.255 0 0 1-1.256-1.255v-1.251l-.061.117a4.7 4.7 0 0 1-1.782 1.884 4.77 4.77 0 0 1-2.485.67 5.6 5.6 0 0 1-1.485-.188l.009 2.764a1.255 1.255 0 0 1-1.255 1.259h-1.729a1.255 1.255 0 0 1-1.255-1.255v-3.537a1.255 1.255 0 0 1-1.167.793h-1.679a1.25 1.25 0 0 1-.77-.263 4.5 4.5 0 0 1-1.945.429c-.885 0-1.724-.21-2.495-.632l-.017-.01a5 5 0 0 1-1.081-.836 1.255 1.255 0 0 1-1.254 1.312h-1.81a1.255 1.255 0 0 1-1.228-.99l-.782-3.625-2.044 3.939a1.25 1.25 0 0 1-1.115.676h-.098a1.25 1.25 0 0 1-1.116-.68l-2.061-3.994zM35.92 16.63l.207-.114.223-.15q.493-.356.735-.785l.061-.118.033 1.332h1.678V9.242h-1.694l-.033 1.267q-.133-.329-.526-.658l-.032-.028a3.2 3.2 0 0 0-.668-.428l-.27-.12a3.3 3.3 0 0 0-1.235-.23q-1.136-.001-1.974.493a3.36 3.36 0 0 0-1.3 1.382q-.445.89-.444 2.074 0 1.2.51 2.107a3.8 3.8 0 0 0 1.382 1.381 3.9 3.9 0 0 0 1.893.477q.795 0 1.455-.33zm-2.789-5.38q-.576.675-.575 1.762 0 1.102.559 1.794.576.675 1.645.675a2.25 2.25 0 0 0 .934-.19 2.2 2.2 0 0 0 .468-.29l.178-.161a2.2 2.2 0 0 0 .397-.561q.244-.5.244-1.15v-.115q0-.708-.296-1.267l-.043-.077a2.2 2.2 0 0 0-.633-.709l-.13-.086-.047-.028a2.1 2.1 0 0 0-1.073-.285q-1.052 0-1.629.692zm2.316 2.706c.163-.17.28-.407.28-.83v-.114c0-.292-.06-.508-.15-.68a.96.96 0 0 0-.353-.389.85.85 0 0 0-.464-.127c-.4 0-.56.114-.664.239l-.01.012c-.148.174-.275.45-.275.945 0 .506.122.801.27.99.097.11.266.224.68.224.303 0 .504-.09.687-.269zm7.545 1.705a2.6 2.6 0 0 0 .331.423q.319.33.755.548l.173.074q.65.255 1.49.255 1.02 0 1.844-.493a3.45 3.45 0 0 0 1.316-1.4q.493-.904.493-2.089 0-1.909-.988-2.913-.988-1.02-2.584-1.02-.898 0-1.575.347a3 3 0 0 0-.415.262l-.199.166a3.4 3.4 0 0 0-.64.82V9.242h-1.712v11.553h1.729l-.017-5.134zm.53-1.138q.206.29.48.5l.155.11.053.034q.51.296 1.119.297 1.07 0 1.645-.675.577-.69.576-1.762 0-1.119-.576-1.777-.558-.675-1.645-.675-.435 0-.835.16a2 2 0 0 0-.284.136 2 2 0 0 0-.363.254 2.2 2.2 0 0 0-.46.569l-.082.162a2.6 2.6 0 0 0-.213 1.072v.115q0 .707.296 1.267l.135.211zm.964-.818a1.1 1.1 0 0 0 .367.385.94.94 0 0 0 .476.118c.423 0 .59-.117.687-.23.159-.194.28-.478.28-.95 0-.53-.133-.8-.266-.952l-.021-.025c-.078-.094-.231-.221-.68-.221a1 1 0 0 0-.503.135l-.012.007a.86.86 0 0 0-.335.343c-.073.133-.132.324-.132.614v.115a1.4 1.4 0 0 0 .14.66zm15.7-6.222q.347-.346.346-.856a1.05 1.05 0 0 0-.345-.79 1.18 1.18 0 0 0-.84-.329q-.51 0-.855.33a1.05 1.05 0 0 0-.346.79q0 .51.346.855.345.346.856.346.51 0 .839-.346zm4.337 9.314.033-1.332q.191.403.59.747l.098.081a4 4 0 0 0 .316.224l.223.122a3.2 3.2 0 0 0 1.44.322 3.8 3.8 0 0 0 1.875-.477 3.5 3.5 0 0 0 1.382-1.366q.527-.89.526-2.09 0-1.184-.444-2.073a3.24 3.24 0 0 0-1.283-1.399q-.823-.51-1.942-.51a3.5 3.5 0 0 0-1.527.344l-.086.043-.165.09a3 3 0 0 0-.33.214q-.432.315-.656.707a2 2 0 0 0-.099.198l.082-1.283V4.701h-1.744v12.095zm.473-2.509a2.5 2.5 0 0 0 .566.7q.117.098.245.18l.144.08a2.1 2.1 0 0 0 .975.232q1.07 0 1.645-.675.576-.69.576-1.778 0-1.102-.576-1.777-.56-.691-1.645-.692a2.2 2.2 0 0 0-1.015.235q-.22.113-.415.282l-.15.142a2.1 2.1 0 0 0-.42.594q-.223.479-.223 1.1v.115q0 .705.293 1.26zm2.616-.293c.157-.191.28-.479.28-.967 0-.51-.13-.79-.276-.961l-.021-.026c-.082-.1-.232-.225-.67-.225a.87.87 0 0 0-.681.279l-.012.011c-.154.155-.274.38-.274.807v.115c0 .285.057.499.144.669a1.1 1.1 0 0 0 .367.405c.137.082.28.123.455.123.423 0 .59-.118.686-.23zm8.266-3.013q.345-.13.724-.14l.069-.002q.493 0 .642.099l.247-1.794q-.196-.099-.717-.099a2.3 2.3 0 0 0-.545.063 2 2 0 0 0-.411.148 2.2 2.2 0 0 0-.4.249 2.5 2.5 0 0 0-.485.499 2.7 2.7 0 0 0-.32.581l-.05.137v-1.48h-1.778v7.553h1.777v-3.884q0-.546.159-.943a1.5 1.5 0 0 1 .466-.636 2.5 2.5 0 0 1 .399-.253 2 2 0 0 1 .224-.099zm9.784 2.656.05-.922q0-1.743-.856-2.698-.838-.97-2.584-.97-1.119-.001-2.007.493a3.46 3.46 0 0 0-1.4 1.382q-.493.906-.493 2.106 0 1.07.428 1.975.428.89 1.332 1.432.906.526 2.255.526.973 0 1.668-.185l.044-.012.135-.04q.613-.184.984-.421l-.542-1.267q-.3.162-.642.274l-.297.087q-.51.131-1.3.131-.954 0-1.497-.444a1.6 1.6 0 0 1-.192-.193q-.366-.44-.512-1.234l-.004-.021zm-5.427-1.256-.003.022h3.752v-.138q-.011-.727-.288-1.118a1 1 0 0 0-.156-.176q-.46-.428-1.316-.428-.986 0-1.494.604-.379.45-.494 1.234zm-27.053 2.77V4.7h-1.86v12.095h5.333V15.15zm7.103-5.908v7.553h-1.843V9.242h1.843z'/%3E%3Cpath fill='%23fff' d='m19.63 11.151-.757-1.71-.345 1.71-1.12 5.644h-1.827L18.083 4.7h.197l3.325 6.533.988 2.19.988-2.19L26.839 4.7h.181l2.6 12.095h-1.81l-1.218-5.644-.362-1.71-.658 1.71-2.93 5.644h-.098l-2.913-5.644zm14.836 5.81q-1.02 0-1.893-.478a3.8 3.8 0 0 1-1.381-1.382q-.51-.906-.51-2.106 0-1.185.444-2.074a3.36 3.36 0 0 1 1.3-1.382q.839-.494 1.974-.494a3.3 3.3 0 0 1 1.234.231 3.3 3.3 0 0 1 .97.575q.396.33.527.659l.033-1.267h1.694v7.553H37.18l-.033-1.332q-.279.593-1.02 1.053a3.17 3.17 0 0 1-1.662.444zm.296-1.482q.938 0 1.58-.642.642-.66.642-1.711v-.115q0-.708-.296-1.267a2.2 2.2 0 0 0-.807-.872 2.1 2.1 0 0 0-1.119-.313q-1.053 0-1.629.692-.575.675-.575 1.76 0 1.103.559 1.795.577.675 1.645.675zm6.521-6.237h1.711v1.4q.906-1.597 2.83-1.597 1.596 0 2.584 1.02.988 1.005.988 2.914 0 1.185-.493 2.09a3.46 3.46 0 0 1-1.316 1.399 3.5 3.5 0 0 1-1.844.493q-.954 0-1.662-.329a2.67 2.67 0 0 1-1.086-.97l.017 5.134h-1.728zm4.048 6.22q1.07 0 1.645-.674.577-.69.576-1.762 0-1.119-.576-1.777-.558-.675-1.645-.675-.592 0-1.12.296-.51.28-.822.823-.296.527-.296 1.234v.115q0 .708.296 1.267.313.543.823.855.51.296 1.119.297z'/%3E%3Cpath fill='%23e1e3e9' d='M51.325 4.7h1.86v10.45h3.473v1.646h-5.333zm7.12 4.542h1.843v7.553h-1.843zm.905-1.415a1.16 1.16 0 0 1-.856-.346 1.17 1.17 0 0 1-.346-.856 1.05 1.05 0 0 1 .346-.79q.346-.329.856-.329.494 0 .839.33a1.05 1.05 0 0 1 .345.79 1.16 1.16 0 0 1-.345.855q-.33.346-.84.346zm7.875 9.133a3.17 3.17 0 0 1-1.662-.444q-.723-.46-1.004-1.053l-.033 1.332h-1.71V4.701h1.743v4.657l-.082 1.283q.279-.658 1.086-1.119a3.5 3.5 0 0 1 1.778-.477q1.119 0 1.942.51a3.24 3.24 0 0 1 1.283 1.4q.445.888.444 2.072 0 1.201-.526 2.09a3.5 3.5 0 0 1-1.382 1.366 3.8 3.8 0 0 1-1.876.477zm-.296-1.481q1.069 0 1.645-.675.577-.69.577-1.778 0-1.102-.577-1.776-.56-.691-1.645-.692a2.12 2.12 0 0 0-1.58.659q-.642.641-.642 1.694v.115q0 .71.296 1.267a2.4 2.4 0 0 0 .807.872 2.1 2.1 0 0 0 1.119.313zm5.927-6.237h1.777v1.481q.263-.757.856-1.217a2.14 2.14 0 0 1 1.349-.46q.527 0 .724.098l-.247 1.794q-.149-.099-.642-.099-.774 0-1.416.494-.626.493-.626 1.58v3.883h-1.777V9.242zm9.534 7.718q-1.35 0-2.255-.526-.904-.543-1.332-1.432a4.6 4.6 0 0 1-.428-1.975q0-1.2.493-2.106a3.46 3.46 0 0 1 1.4-1.382q.889-.495 2.007-.494 1.744 0 2.584.97.855.956.856 2.7 0 .444-.05.92h-5.43q.18 1.005.708 1.45.542.443 1.497.443.79 0 1.3-.131a4 4 0 0 0 .938-.362l.542 1.267q-.411.263-1.119.46-.708.198-1.711.197zm1.596-4.558q.016-1.02-.444-1.432-.46-.428-1.316-.428-1.728 0-1.991 1.86z'/%3E%3Cpath d='M5.074 15.948a.484.657 0 0 0-.486.659v1.84a.484.657 0 0 0 .486.659h4.101a.484.657 0 0 0 .486-.659v-1.84a.484.657 0 0 0-.486-.659zm3.56 1.16H5.617v.838h3.017z' style='fill:%23fff;fill-rule:evenodd;stroke-width:1.03600001'/%3E%3Cg style='stroke-width:1.12603545'%3E%3Cpath d='M-9.408-1.416c-3.833-.025-7.056 2.912-7.08 6.615-.02 3.08 1.653 4.832 3.107 6.268.903.892 1.721 1.74 2.32 2.902l-.525-.004c-.543-.003-.992.304-1.24.639a1.87 1.87 0 0 0-.362 1.121l-.011 1.877c-.003.402.104.787.347 1.125.244.338.688.653 1.23.656l4.142.028c.542.003.99-.306 1.238-.641a1.87 1.87 0 0 0 .363-1.121l.012-1.875a1.87 1.87 0 0 0-.348-1.127c-.243-.338-.688-.653-1.23-.656l-.518-.004c.597-1.145 1.425-1.983 2.348-2.87 1.473-1.414 3.18-3.149 3.2-6.226-.016-3.59-2.923-6.684-6.993-6.707m-.006 1.1v.002c3.274.02 5.92 2.532 5.9 5.6-.017 2.706-1.39 4.026-2.863 5.44-1.034.994-2.118 2.033-2.814 3.633-.018.041-.052.055-.075.065q-.013.004-.02.01a.34.34 0 0 1-.226.084.34.34 0 0 1-.224-.086l-.092-.077c-.699-1.615-1.768-2.669-2.781-3.67-1.454-1.435-2.797-2.762-2.78-5.478.02-3.067 2.7-5.545 5.975-5.523m-.02 2.826c-1.62-.01-2.944 1.315-2.955 2.96-.01 1.646 1.295 2.988 2.916 2.999h.002c1.621.01 2.943-1.316 2.953-2.961.011-1.646-1.294-2.988-2.916-2.998m-.005 1.1c1.017.006 1.829.83 1.822 1.89s-.83 1.874-1.848 1.867c-1.018-.006-1.829-.83-1.822-1.89s.83-1.874 1.848-1.868m-2.155 11.857 4.14.025c.271.002.49.305.487.676l-.013 1.875c-.003.37-.224.67-.495.668l-4.14-.025c-.27-.002-.487-.306-.485-.676l.012-1.875c.003-.37.224-.67.494-.668' style='color:%23000;font-style:normal;font-variant:normal;font-weight:400;font-stretch:normal;font-size:medium;line-height:normal;font-family:sans-serif;font-variant-ligatures:normal;font-variant-position:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-alternates:normal;font-feature-settings:normal;text-indent:0;text-align:start;text-decoration:none;text-decoration-line:none;text-decoration-style:solid;text-decoration-color:%23000;letter-spacing:normal;word-spacing:normal;text-transform:none;writing-mode:lr-tb;direction:ltr;text-orientation:mixed;dominant-baseline:auto;baseline-shift:baseline;text-anchor:start;white-space:normal;shape-padding:0;clip-rule:evenodd;display:inline;overflow:visible;visibility:visible;opacity:1;isolation:auto;mix-blend-mode:normal;color-interpolation:sRGB;color-interpolation-filters:linearRGB;solid-color:%23000;solid-opacity:1;vector-effect:none;fill:%23000;fill-opacity:.4;fill-rule:evenodd;stroke:none;stroke-width:2.47727823;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;color-rendering:auto;image-rendering:auto;shape-rendering:auto;text-rendering:auto' transform='translate(15.553 2.85)scale(.88807)'/%3E%3Cpath d='M-9.415-.316C-12.69-.338-15.37 2.14-15.39 5.207c-.017 2.716 1.326 4.041 2.78 5.477 1.013 1 2.081 2.055 2.78 3.67l.092.076a.34.34 0 0 0 .225.086.34.34 0 0 0 .227-.083l.019-.01c.022-.009.057-.024.074-.064.697-1.6 1.78-2.64 2.814-3.634 1.473-1.414 2.847-2.733 2.864-5.44.02-3.067-2.627-5.58-5.901-5.601m-.057 8.784c1.621.011 2.944-1.315 2.955-2.96.01-1.646-1.295-2.988-2.916-2.999-1.622-.01-2.945 1.315-2.955 2.96s1.295 2.989 2.916 3' style='clip-rule:evenodd;fill:%23e1e3e9;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:2.47727823;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:.4' transform='translate(15.553 2.85)scale(.88807)'/%3E%3Cpath d='M-11.594 15.465c-.27-.002-.492.297-.494.668l-.012 1.876c-.003.371.214.673.485.675l4.14.027c.271.002.492-.298.495-.668l.012-1.877c.003-.37-.215-.672-.485-.674z' style='clip-rule:evenodd;fill:%23fff;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:2.47727823;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:.4' transform='translate(15.553 2.85)scale(.88807)'/%3E%3C/g%3E%3C/svg%3E")}}.maplibregl-ctrl.maplibregl-ctrl-attrib{background-color:hsla(0,0%,100%,.5);margin:0;padding:0 5px}@media screen{.maplibregl-ctrl-attrib.maplibregl-compact{background-color:#fff;border-radius:12px;box-sizing:content-box;color:#000;margin:10px;min-height:20px;padding:2px 24px 2px 0;position:relative}.maplibregl-ctrl-attrib.maplibregl-compact-show{padding:2px 28px 2px 8px;visibility:visible}.maplibregl-ctrl-bottom-left>.maplibregl-ctrl-attrib.maplibregl-compact-show,.maplibregl-ctrl-top-left>.maplibregl-ctrl-attrib.maplibregl-compact-show{border-radius:12px;padding:2px 8px 2px 28px}.maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-inner{display:none}.maplibregl-ctrl-attrib-button{background-color:hsla(0,0%,100%,.5);background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill-rule='evenodd' viewBox='0 0 20 20'%3E%3Cpath d='M4 10a6 6 0 1 0 12 0 6 6 0 1 0-12 0m5-3a1 1 0 1 0 2 0 1 1 0 1 0-2 0m0 3a1 1 0 1 1 2 0v3a1 1 0 1 1-2 0'/%3E%3C/svg%3E");border:0;border-radius:12px;box-sizing:border-box;cursor:pointer;display:none;height:24px;outline:none;position:absolute;right:0;top:0;width:24px}.maplibregl-ctrl-attrib summary.maplibregl-ctrl-attrib-button{-webkit-appearance:none;-moz-appearance:none;appearance:none;list-style:none}.maplibregl-ctrl-attrib summary.maplibregl-ctrl-attrib-button::-webkit-details-marker{display:none}.maplibregl-ctrl-bottom-left .maplibregl-ctrl-attrib-button,.maplibregl-ctrl-top-left .maplibregl-ctrl-attrib-button{left:0}.maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-button,.maplibregl-ctrl-attrib.maplibregl-compact-show .maplibregl-ctrl-attrib-inner{display:block}.maplibregl-ctrl-attrib.maplibregl-compact-show .maplibregl-ctrl-attrib-button{background-color:rgba(0,0,0,.05)}.maplibregl-ctrl-bottom-right>.maplibregl-ctrl-attrib.maplibregl-compact:after{bottom:0;right:0}.maplibregl-ctrl-top-right>.maplibregl-ctrl-attrib.maplibregl-compact:after{right:0;top:0}.maplibregl-ctrl-top-left>.maplibregl-ctrl-attrib.maplibregl-compact:after{left:0;top:0}.maplibregl-ctrl-bottom-left>.maplibregl-ctrl-attrib.maplibregl-compact:after{bottom:0;left:0}}@media screen and (forced-colors:active){.maplibregl-ctrl-attrib.maplibregl-compact:after{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill='%23fff' fill-rule='evenodd' viewBox='0 0 20 20'%3E%3Cpath d='M4 10a6 6 0 1 0 12 0 6 6 0 1 0-12 0m5-3a1 1 0 1 0 2 0 1 1 0 1 0-2 0m0 3a1 1 0 1 1 2 0v3a1 1 0 1 1-2 0'/%3E%3C/svg%3E")}}@media screen and (forced-colors:active) and (prefers-color-scheme:light){.maplibregl-ctrl-attrib.maplibregl-compact:after{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill-rule='evenodd' viewBox='0 0 20 20'%3E%3Cpath d='M4 10a6 6 0 1 0 12 0 6 6 0 1 0-12 0m5-3a1 1 0 1 0 2 0 1 1 0 1 0-2 0m0 3a1 1 0 1 1 2 0v3a1 1 0 1 1-2 0'/%3E%3C/svg%3E")}}.maplibregl-ctrl-attrib a{color:rgba(0,0,0,.75);text-decoration:none}.maplibregl-ctrl-attrib a:hover{color:inherit;text-decoration:underline}.maplibregl-attrib-empty{display:none}.maplibregl-ctrl-scale{background-color:hsla(0,0%,100%,.75);border:2px solid #333;border-top:#333;box-sizing:border-box;color:#333;font-size:10px;padding:0 5px;white-space:nowrap}.maplibregl-popup{display:flex;left:0;pointer-events:none;position:absolute;top:0;will-change:transform}.maplibregl-popup-anchor-top,.maplibregl-popup-anchor-top-left,.maplibregl-popup-anchor-top-right{flex-direction:column}.maplibregl-popup-anchor-bottom,.maplibregl-popup-anchor-bottom-left,.maplibregl-popup-anchor-bottom-right{flex-direction:column-reverse}.maplibregl-popup-anchor-left{flex-direction:row}.maplibregl-popup-anchor-right{flex-direction:row-reverse}.maplibregl-popup-tip{border:10px solid transparent;height:0;width:0;z-index:1}.maplibregl-popup-anchor-top .maplibregl-popup-tip{align-self:center;border-bottom-color:#fff;border-top:none}.maplibregl-popup-anchor-top-left .maplibregl-popup-tip{align-self:flex-start;border-bottom-color:#fff;border-left:none;border-top:none}.maplibregl-popup-anchor-top-right .maplibregl-popup-tip{align-self:flex-end;border-bottom-color:#fff;border-right:none;border-top:none}.maplibregl-popup-anchor-bottom .maplibregl-popup-tip{align-self:center;border-bottom:none;border-top-color:#fff}.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip{align-self:flex-start;border-bottom:none;border-left:none;border-top-color:#fff}.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip{align-self:flex-end;border-bottom:none;border-right:none;border-top-color:#fff}.maplibregl-popup-anchor-left .maplibregl-popup-tip{align-self:center;border-left:none;border-right-color:#fff}.maplibregl-popup-anchor-right .maplibregl-popup-tip{align-self:center;border-left-color:#fff;border-right:none}[dir=rtl] .maplibregl-popup-anchor-left{flex-direction:row-reverse}[dir=rtl] .maplibregl-popup-anchor-right{flex-direction:row}[dir=rtl] .maplibregl-popup-anchor-top-left .maplibregl-popup-tip{align-self:flex-end}[dir=rtl] .maplibregl-popup-anchor-top-right .maplibregl-popup-tip{align-self:flex-start}[dir=rtl] .maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip{align-self:flex-end}[dir=rtl] .maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip{align-self:flex-start}.maplibregl-popup-close-button{background-color:transparent;border:0;border-radius:0 3px 0 0;cursor:pointer;position:absolute;right:0;top:0}.maplibregl-popup-close-button:hover{background-color:rgba(0,0,0,.05)}.maplibregl-popup-content{background:#fff;border-radius:3px;box-shadow:0 1px 2px rgba(0,0,0,.1);padding:15px 10px;pointer-events:auto;position:relative}.maplibregl-popup-anchor-top-left .maplibregl-popup-content{border-top-left-radius:0}.maplibregl-popup-anchor-top-right .maplibregl-popup-content{border-top-right-radius:0}.maplibregl-popup-anchor-bottom-left .maplibregl-popup-content{border-bottom-left-radius:0}.maplibregl-popup-anchor-bottom-right .maplibregl-popup-content{border-bottom-right-radius:0}.maplibregl-popup-track-pointer{display:none}.maplibregl-popup-track-pointer *{pointer-events:none;-webkit-user-select:none;-moz-user-select:none;user-select:none}.maplibregl-map:hover .maplibregl-popup-track-pointer{display:flex}.maplibregl-map:active .maplibregl-popup-track-pointer{display:none}.maplibregl-marker{left:0;position:absolute;top:0;transition:opacity .2s;will-change:transform}.maplibregl-user-location-dot,.maplibregl-user-location-dot:before{background-color:#1da1f2;border-radius:50%;height:15px;width:15px}.maplibregl-user-location-dot:before{animation:maplibregl-user-location-dot-pulse 2s infinite;content:"";position:absolute}.maplibregl-user-location-dot:after{border:2px solid #fff;border-radius:50%;box-shadow:0 0 3px rgba(0,0,0,.35);box-sizing:border-box;content:"";height:19px;left:-2px;position:absolute;top:-2px;width:19px}@media (prefers-reduced-motion:reduce){.maplibregl-user-location-dot:before{animation:none}}@keyframes maplibregl-user-location-dot-pulse{0%{opacity:1;transform:scale(1)}70%{opacity:0;transform:scale(3)}to{opacity:0;transform:scale(1)}}.maplibregl-user-location-dot-stale{background-color:#aaa}.maplibregl-user-location-dot-stale:after{display:none}.maplibregl-user-location-accuracy-circle{background-color:#1da1f233;border-radius:100%;height:1px;width:1px}.maplibregl-crosshair,.maplibregl-crosshair .maplibregl-interactive,.maplibregl-crosshair .maplibregl-interactive:active{cursor:crosshair}.maplibregl-boxzoom{background:#fff;border:2px dotted #202020;height:0;left:0;opacity:.5;position:absolute;top:0;width:0}.maplibregl-cooperative-gesture-screen{align-items:center;background:rgba(0,0,0,.4);color:#fff;display:flex;font-size:1.4em;inset:0;justify-content:center;line-height:1.2;opacity:0;padding:1rem;pointer-events:none;position:absolute;transition:opacity 1s ease 1s;z-index:99999}.maplibregl-cooperative-gesture-screen.maplibregl-show{opacity:1;transition:opacity .05s}.maplibregl-cooperative-gesture-screen .maplibregl-mobile-message{display:none}@media (hover:none),(pointer:coarse){.maplibregl-cooperative-gesture-screen .maplibregl-desktop-message{display:none}.maplibregl-cooperative-gesture-screen .maplibregl-mobile-message{display:block}}.maplibregl-pseudo-fullscreen{height:100%!important;left:0!important;position:fixed!important;top:0!important;width:100%!important;z-index:99999}</style>
-<style>*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+<style>/* ── design tokens ─────────────────────────────────────────── */
 :root{
-  --cy:#00e8ff; --cy-d:#00a8bd; --mg:#ff2d78; --am:#ffb52e; --gr:#23e08a;
-  --f:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  --m:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --accent:#1f6feb; --accent-ink:#fff; --accent-soft:rgba(31,111,235,.1);
+  --walk:#6b7684; --bike:#0f9d58; --car:#1f6feb; --rail:#8b5cf6;
+  --good:#1a7f45; --warn:#b45309; --bad:#c2321f;
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --r:10px; --r-lg:14px;
+  --pw:392px;
 }
-html[data-t="dark"]{
-  --bg:#03060b; --gl:#070c14; --gl2:#0c141f; --ed:rgba(0,232,255,.16); --ed2:rgba(0,232,255,.38);
-  --ink:#e9f6fa; --ink2:#7e95a3; --ink3:#4a5c69; --sh:0 0 0 1px rgba(0,232,255,.07),0 14px 44px rgba(0,0,0,.7);
-  --scan:rgba(0,232,255,.028);
+html[data-theme="light"]{
+  --bg:#ffffff; --bg2:#f6f7f9; --bg3:#eceef1; --line:#e3e6ea; --line2:#d2d7dd;
+  --ink:#16191d; --ink2:#5b636d; --ink3:#8b939d;
+  --shadow:0 1px 2px rgba(16,24,40,.06),0 8px 24px rgba(16,24,40,.08);
+  --shadow-lg:0 2px 6px rgba(16,24,40,.08),0 20px 48px rgba(16,24,40,.16);
 }
-html[data-t="light"]{
-  --bg:#eef2f5; --gl:#ffffff; --gl2:#f4f7fa; --ed:rgba(0,90,110,.17); --ed2:rgba(0,120,145,.4);
-  --ink:#04121a; --ink2:#4a6070; --ink3:#8aa0ad; --sh:0 0 0 1px rgba(0,80,100,.05),0 10px 30px rgba(10,30,45,.14);
-  --cy:#0090ad; --cy-d:#006d82; --scan:rgba(0,90,110,.022);
+html[data-theme="dark"]{
+  --bg:#15181d; --bg2:#1b1f26; --bg3:#232832; --line:#2b313b; --line2:#3a4250;
+  --ink:#eef1f5; --ink2:#a0a9b4; --ink3:#6f7884;
+  --accent:#4d8dfa; --accent-soft:rgba(77,141,250,.16);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.45);
+  --shadow-lg:0 2px 6px rgba(0,0,0,.45),0 20px 48px rgba(0,0,0,.6);
 }
-html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--f)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--bg2);color:var(--ink);
+  font-family:var(--sans);font-size:14px;line-height:1.45;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+button,input{font:inherit;color:inherit}
+svg{width:18px;height:18px;flex:none}
 #map{position:absolute;inset:0}
-#grid{position:absolute;inset:0;pointer-events:none;z-index:5;
-  background:repeating-linear-gradient(0deg,var(--scan) 0 1px,transparent 1px 3px)}
-.maplibregl-ctrl-attrib{font-size:9px!important;font-family:var(--m)!important}
-html[data-t="dark"] .maplibregl-ctrl-attrib{background:rgba(3,6,11,.8)!important}
-html[data-t="dark"] .maplibregl-ctrl-attrib,html[data-t="dark"] .maplibregl-ctrl-attrib a{color:#4a5c69!important}
-.maplibregl-ctrl-bottom-right{margin-bottom:env(safe-area-inset-bottom)}
-.maplibregl-ctrl-group{background:var(--gl)!important;border:1px solid var(--ed)!important;box-shadow:var(--sh)!important}
-.maplibregl-ctrl-group button+button{border-top:1px solid var(--ed)!important}
-html[data-t="dark"] .maplibregl-ctrl-group button span{filter:invert(1) hue-rotate(180deg)}
+.maplibregl-ctrl-attrib{display:none!important}
+.maplibregl-ctrl-bottom-right{display:none}
 
-/* framed panel with corner brackets */
-.p{position:relative;background:var(--gl);border:1px solid var(--ed);box-shadow:var(--sh);
-  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
-.p::before,.p::after{content:"";position:absolute;width:9px;height:9px;pointer-events:none}
-.p::before{top:-1px;left:-1px;border-top:1.5px solid var(--cy);border-left:1.5px solid var(--cy)}
-.p::after{bottom:-1px;right:-1px;border-bottom:1.5px solid var(--cy);border-right:1.5px solid var(--cy)}
-.lab{font:700 9px var(--m);letter-spacing:1.6px;text-transform:uppercase;color:var(--cy)}
-.num{font-family:var(--m);font-variant-numeric:tabular-nums}
+/* ── panel ─────────────────────────────────────────────────── */
+#panel{position:absolute;z-index:20;top:0;left:0;bottom:0;width:var(--pw);
+  background:var(--bg);border-right:1px solid var(--line);display:flex;flex-direction:column;
+  box-shadow:var(--shadow);transition:transform .26s cubic-bezier(.3,.9,.3,1)}
+#panel.hid{transform:translateX(calc(-1 * var(--pw)))}
+#brand{display:flex;align-items:center;gap:10px;padding:14px 14px 10px}
+#brand .mark{width:30px;height:30px;border-radius:8px;background:var(--accent);color:#fff;
+  display:grid;place-items:center}
+#brand .mark svg{width:17px;height:17px}
+#brand h1{flex:1;margin:0;font-size:16.5px;font-weight:650;letter-spacing:-.3px}
+.ghost{position:relative;width:32px;height:32px;display:grid;place-items:center;border:0;
+  border-radius:8px;background:none;color:var(--ink2);cursor:pointer}
+.ghost:hover{background:var(--bg3);color:var(--ink)}
+.pip{position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:var(--bad)}
 
-/* search */
-#find{position:absolute;z-index:30;top:max(12px,env(safe-area-inset-top));left:12px;width:min(360px,calc(100vw - 78px))}
-#bar{display:flex;align-items:center;gap:9px;height:46px;padding:0 8px 0 13px}
-#bar input{flex:1;min-width:0;border:0;background:none;outline:0;color:var(--ink);
-  font:500 14px var(--m);letter-spacing:-.1px}
-#bar input::placeholder{color:var(--ink3);font-family:var(--m);letter-spacing:.4px;font-size:12px;text-transform:uppercase}
-.ic{flex:none;display:grid;place-items:center;color:var(--cy)}
-.xb{width:28px;height:28px;border:0;background:none;color:var(--ink3);cursor:pointer;display:grid;place-items:center}
-.xb:hover{color:var(--cy)}
-#hits{margin-top:7px;max-height:min(46vh,380px);overflow-y:auto;display:none}
-#hits.on{display:block}
-.h{display:flex;gap:10px;align-items:center;padding:10px 13px;cursor:pointer;border-bottom:1px solid var(--ed)}
-.h:last-child{border-bottom:0}
-.h:hover,.h.sel{background:linear-gradient(90deg,rgba(0,232,255,.13),transparent)}
-.h .d{width:5px;align-self:stretch;flex:none;background:var(--cy);opacity:.55}
-.h .tx{min-width:0;flex:1}
-.h .a{font:600 13.5px var(--f);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.h .b{font:400 11px var(--m);color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
-.msg{padding:12px 13px;font:400 11.5px var(--m);color:var(--ink3)}
+#planner{flex:1;min-height:0;display:flex;flex-direction:column;padding:0 14px 10px}
 
-/* rail */
-#rail{position:absolute;z-index:30;right:12px;top:max(12px,env(safe-area-inset-top));display:flex;flex-direction:column;gap:7px}
-.r{width:42px;height:42px;display:grid;place-items:center;background:var(--gl);border:1px solid var(--ed);
-  color:var(--ink2);cursor:pointer;box-shadow:var(--sh);user-select:none;transition:.14s;
-  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
-.r:hover{color:var(--cy);border-color:var(--ed2)}
-.r.on{color:#03060b;background:var(--cy);border-color:var(--cy);box-shadow:0 0 18px rgba(0,232,255,.45)}
-.r .t{font:700 9px var(--m);letter-spacing:.6px}
-.r .bad{position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;background:var(--mg);
-  box-shadow:0 0 9px var(--mg)}
+/* from / to */
+.fields{position:relative;display:flex;gap:10px;align-items:stretch;
+  background:var(--bg2);border:1px solid var(--line);border-radius:var(--r-lg);padding:8px 8px 8px 10px}
+.fields .rail{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:9px 0 9px}
+.fields .dot{width:9px;height:9px;border-radius:50%;flex:none}
+.fields .dot.start{border:2.5px solid var(--ink3)}
+.fields .dot.end{background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.fields .bar{flex:1;width:2px;background:repeating-linear-gradient(180deg,var(--line2) 0 3px,transparent 3px 6px);margin:4px 0}
+.inputs{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.field{display:flex;align-items:center;gap:4px;border-radius:8px;padding:0 2px 0 6px;background:var(--bg)}
+.field:focus-within{box-shadow:0 0 0 2px var(--accent)}
+.field input{flex:1;min-width:0;height:36px;border:0;background:none;outline:0;font-size:14px}
+.field input::placeholder{color:var(--ink3)}
+.mini{width:28px;height:28px;display:grid;place-items:center;border:0;border-radius:7px;
+  background:none;color:var(--ink3);cursor:pointer;flex:none}
+.mini:hover{background:var(--bg3);color:var(--accent)}
+.mini svg{width:15px;height:15px}
+.mini.swap{align-self:center}
 
-/* footer readout */
-#foot{position:absolute;z-index:30;left:12px;bottom:12px;display:flex;align-items:center;gap:12px;padding:7px 12px;
-  font:600 9.5px var(--m);letter-spacing:1px;text-transform:uppercase;color:var(--ink2)}
-#foot b{color:var(--cy);font-weight:700}
+/* mode tabs */
+#modes{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.mode{display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 2px 7px;
+  border:1px solid var(--line);border-radius:var(--r);background:var(--bg);color:var(--ink2);
+  cursor:pointer;transition:.13s}
+.mode:hover{border-color:var(--line2);color:var(--ink)}
+.mode span{font-size:11px;font-weight:550;letter-spacing:-.1px}
+.mode em{font-style:normal;font-size:10.5px;font-weight:650;color:var(--ink3);font-family:var(--mono);min-height:13px}
+.mode.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.mode.on em{color:var(--accent)}
+.mode.busy em::after{content:"···";letter-spacing:1px}
 
-/* card */
-#card{position:absolute;z-index:30;left:12px;bottom:46px;width:min(360px,calc(100vw - 24px));
-  max-height:62vh;overflow-y:auto;padding:15px;display:none}
-#card.on{display:block}
-#card h2{margin:6px 0 4px;font:650 19px var(--f);letter-spacing:-.4px;line-height:1.22}
-#card .sub{font:400 11.5px var(--m);color:var(--ink2);line-height:1.55}
-.close{position:absolute;top:9px;right:10px;width:25px;height:25px;border:0;background:none;
-  color:var(--ink3);cursor:pointer;font:400 17px var(--f);line-height:1;z-index:2}
-.close:hover{color:var(--mg)}
-.big{display:flex;align-items:baseline;gap:10px;margin-top:3px}
-.big .v{font:700 32px var(--m);letter-spacing:-1.5px;color:var(--cy);text-shadow:0 0 22px rgba(0,232,255,.3)}
-.big .u{font:600 12px var(--m);color:var(--ink2);letter-spacing:.3px}
-.modes{display:flex;gap:5px;margin-top:13px;flex-wrap:wrap}
-.mode{padding:8px 13px;border:1px solid var(--ed);background:var(--gl2);color:var(--ink2);
-  font:700 10px var(--m);letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:.14s}
-.mode:hover{border-color:var(--ed2);color:var(--ink)}
-.mode.on{background:var(--cy);border-color:var(--cy);color:#03060b;box-shadow:0 0 14px rgba(0,232,255,.35)}
-.row{display:grid;grid-template-columns:1fr auto;gap:7px;margin-top:12px}
-.btn{height:46px;padding:0 18px;border:1px solid var(--ed);background:var(--gl2);color:var(--ink);
-  font:700 12px var(--m);letter-spacing:1.4px;text-transform:uppercase;cursor:pointer;display:grid;place-items:center;transition:.14s}
-.btn:hover{border-color:var(--ed2);color:var(--cy)}
-.btn.go{background:var(--cy);border-color:var(--cy);color:#03060b;box-shadow:0 0 20px rgba(0,232,255,.4)}
-.btn.go:hover{color:#03060b;filter:brightness(1.1)}
-.btn.sq{width:46px;padding:0}
-.steps{margin-top:13px;border-top:1px solid var(--ed)}
-.st{display:flex;gap:11px;padding:10px 1px;border-bottom:1px solid var(--ed);cursor:pointer}
-.st:last-child{border-bottom:0}
-.st:hover{background:linear-gradient(90deg,rgba(0,232,255,.1),transparent)}
-.st .i{width:25px;height:25px;flex:none;border:1px solid var(--ed);display:grid;place-items:center;color:var(--cy)}
-.st .a{font:500 12.5px var(--f);line-height:1.4}
-.st .b{font:400 10px var(--m);color:var(--ink3);margin-top:2px;letter-spacing:.3px}
-table.kv{width:100%;border-collapse:collapse;margin-top:11px}
-table.kv td{padding:6px 0;border-top:1px solid var(--ed);font:500 11px var(--m)}
-table.kv td:first-child{color:var(--ink3);width:46%;font-weight:400;letter-spacing:.5px;text-transform:uppercase;font-size:9.5px}
+/* suggestions */
+#suggest{margin-top:8px;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;
+  background:var(--bg);box-shadow:var(--shadow);max-height:46vh;overflow-y:auto}
+.sug{display:flex;gap:10px;align-items:flex-start;padding:9px 11px;cursor:pointer;border-bottom:1px solid var(--line)}
+.sug:last-child{border-bottom:0}
+.sug:hover,.sug.sel{background:var(--accent-soft)}
+.sug .pin{color:var(--ink3);margin-top:1px}
+.sug .pin svg{width:15px;height:15px}
+.sug b{display:block;font-size:13.5px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sug small{display:block;color:var(--ink2);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-/* nav HUD */
-#hud{position:absolute;z-index:34;inset:0;display:none;pointer-events:none}
-#hud.on{display:block}
-#hudtop{position:absolute;left:12px;right:12px;top:max(12px,env(safe-area-inset-top));
-  padding:16px 18px;display:flex;align-items:center;gap:16px;pointer-events:auto}
-#hudtop .mi{width:54px;height:54px;flex:none;display:grid;place-items:center;color:#03060b;
-  background:var(--cy);box-shadow:0 0 26px rgba(0,232,255,.55)}
-#hudtop .nt{flex:1;min-width:0}
-#hudd{font:700 26px var(--m);letter-spacing:-1px;color:var(--cy);line-height:1}
-#hudi{font:600 14.5px var(--f);margin-top:5px;line-height:1.25;letter-spacing:-.2px}
-#hudr{font:400 10px var(--m);color:var(--ink2);margin-top:4px;letter-spacing:.8px;text-transform:uppercase}
-.chip{display:inline-block;margin-top:7px;padding:4px 9px;border:1px solid var(--ed);
-  font:700 8.5px var(--m);letter-spacing:1.3px;text-transform:uppercase;color:var(--ink3)}
-.chip.ok{color:var(--gr);border-color:var(--gr)}
-.chip.wait{color:var(--am);border-color:var(--am)}
-.chip.man{color:var(--cy);border-color:var(--cy)}
-.chip.no{color:var(--mg);border-color:var(--mg)}
-.r.live{color:var(--gr);border-color:var(--gr)}
-.r.live.on{color:#03060b;background:var(--gr);border-color:var(--gr);box-shadow:0 0 18px rgba(35,224,138,.5)}
-#hudbot{position:absolute;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));
-  padding:13px 16px;display:flex;align-items:center;gap:18px;pointer-events:auto}
-#hudbot .cell{flex:1;min-width:0}
-.stepb{flex:none;padding:11px 13px;border:1px solid var(--ed);background:var(--gl2);color:var(--ink2);
-  cursor:pointer;font:700 10px var(--m);letter-spacing:1.2px}
-.stepb:hover:not(:disabled){border-color:var(--cy);color:var(--cy)}
-.stepb:disabled{opacity:.3;cursor:not-allowed}
-.stepb.next{background:var(--cy);border-color:var(--cy);color:#03060b;box-shadow:0 0 16px rgba(0,232,255,.4)}
-.stepb.next:disabled{background:var(--gl2);color:var(--ink3);box-shadow:none;border-color:var(--ed)}
-#hudbot .cv{font:700 20px var(--m);letter-spacing:-.8px;color:var(--ink)}
-#hudbot .ck{font:600 8.5px var(--m);letter-spacing:1.3px;text-transform:uppercase;color:var(--ink3);margin-top:3px}
-#hudx{flex:none;padding:11px 15px;border:1px solid var(--mg);color:var(--mg);background:none;cursor:pointer;
-  font:700 10px var(--m);letter-spacing:1.3px}
-#hudx:hover{background:var(--mg);color:#03060b}
-@media(min-width:760px){#hudtop{left:auto;right:66px;width:390px}#hudbot{left:12px;right:66px}}
+/* results */
+#results{flex:1;min-height:0;overflow-y:auto;margin-top:10px}
+.note{padding:16px 2px;color:var(--ink2);font-size:13px;line-height:1.6}
+.note b{color:var(--ink)}
+.opt{border:1px solid var(--line);border-radius:var(--r-lg);padding:11px 12px;margin-bottom:8px;
+  cursor:pointer;background:var(--bg);transition:.13s}
+.opt:hover{border-color:var(--line2)}
+.opt.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.opt .top{display:flex;align-items:baseline;gap:8px}
+.opt .dur{font-size:19px;font-weight:650;letter-spacing:-.4px}
+.opt .dist{font-size:12px;color:var(--ink2);font-family:var(--mono)}
+.opt .when{margin-left:auto;font-size:12px;color:var(--ink2);font-family:var(--mono)}
+.chain{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:8px}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:999px;
+  font-size:11px;font-weight:650;background:var(--bg3);color:var(--ink2)}
+.pill svg{width:12px;height:12px}
+.pill.t{color:#fff}
+.sepx{color:var(--ink3);font-size:10px}
+.opt .sum{margin-top:6px;font-size:12px;color:var(--ink2)}
 
-/* diagnostics */
-#diag{position:absolute;z-index:42;inset:0;background:rgba(3,6,11,.78);display:none;place-items:center;padding:18px;overflow-y:auto}
-#diag.on{display:grid}
-#diagb{width:min(470px,100%);padding:20px}
-#diagb h3{margin:0 0 4px;font:650 17px var(--f);letter-spacing:-.3px}
-#diagb .note{margin:0 0 15px;font:400 11.5px var(--m);color:var(--ink2);line-height:1.6}
-.sv{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-top:1px solid var(--ed)}
-.sv .sd{width:9px;height:9px;flex:none;margin-top:4px;border-radius:50%;background:var(--ink3)}
-.sv .sd.ok{background:var(--gr);box-shadow:0 0 10px var(--gr)}
-.sv .sd.no{background:var(--mg);box-shadow:0 0 10px var(--mg)}
-.sv .sd.wait{background:var(--am);animation:pl .9s ease-in-out infinite}
-.sv .sn{font:600 11.5px var(--m);letter-spacing:.4px;flex:none;width:118px}
-.sv .se{font:400 11px var(--m);color:var(--ink2);flex:1;min-width:0;line-height:1.5;word-break:break-word}
-#diagb label{display:block;font:700 9px var(--m);letter-spacing:1.4px;text-transform:uppercase;color:var(--cy);margin:16px 0 6px}
-#diagb input{width:100%;height:42px;padding:0 12px;border:1px solid var(--ed);background:var(--gl2);
-  color:var(--ink);font:500 12px var(--m);outline:0}
-#diagb input:focus{border-color:var(--cy)}
-#diagb a{color:var(--cy)}
-#diagb p.fix{margin:14px 0 0;padding:11px 13px;border:1px solid var(--am);background:rgba(255,181,46,.07);
-  font:400 11px var(--m);color:var(--ink);line-height:1.65}
+.steps{margin-top:4px;border-top:1px solid var(--line);padding-top:4px}
+.step{display:flex;gap:10px;padding:8px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+.step:last-child{border-bottom:0}
+.step:hover{background:var(--bg2)}
+.step .ic{width:24px;height:24px;flex:none;border-radius:6px;background:var(--bg3);
+  display:grid;place-items:center;color:var(--ink2)}
+.step .ic svg{width:13px;height:13px}
+.step .a{font-size:13px}
+.step .b{font-size:11px;color:var(--ink3);font-family:var(--mono);margin-top:1px}
+.go{display:flex;gap:8px;margin:10px 0 2px}
+.btn{height:40px;padding:0 16px;border:1px solid var(--line);border-radius:var(--r);background:var(--bg);
+  font-size:13.5px;font-weight:600;cursor:pointer;display:grid;place-items:center}
+.btn:hover{border-color:var(--line2)}
+.btn.primary{flex:1;background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.07)}
 
-/* markers */
-.mk{width:28px;height:36px;cursor:pointer;filter:drop-shadow(0 0 10px rgba(0,232,255,.75))}
-.gps{width:16px;height:16px;border-radius:50%;background:var(--cy);border:2px solid #03060b;
-  box-shadow:0 0 0 5px rgba(0,232,255,.22),0 0 22px rgba(0,232,255,.9)}
-.gps::after{content:"";position:absolute;inset:-9px;border-radius:50%;border:1px solid var(--cy);animation:rg 2.3s ease-out infinite}
-@keyframes rg{0%{transform:scale(.55);opacity:.85}100%{transform:scale(2.2);opacity:0}}
+#credit{padding:9px 14px;border-top:1px solid var(--line);font-size:10.5px;color:var(--ink3);line-height:1.5}
+#credit a{color:var(--ink2)}
 
-/* toast, boot, fail */
-#toast{position:absolute;z-index:50;left:50%;bottom:calc(60px + env(safe-area-inset-bottom));transform:translate(-50%,14px);
-  padding:11px 16px;font:500 11.5px var(--m);opacity:0;pointer-events:none;transition:.22s;max-width:84vw;text-align:center;line-height:1.5}
+#panelToggle{position:absolute;z-index:21;top:16px;left:calc(var(--pw) + 10px);width:30px;height:38px;
+  border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink2);cursor:pointer;
+  display:grid;place-items:center;box-shadow:var(--shadow);transition:left .26s cubic-bezier(.3,.9,.3,1)}
+#panel.hid ~ #panelToggle{left:10px}
+#panel.hid ~ #panelToggle svg{transform:rotate(180deg)}
+
+/* ── map tools ─────────────────────────────────────────────── */
+#tools{position:absolute;z-index:18;right:12px;top:12px;display:flex;flex-direction:column;gap:6px}
+.tool{width:38px;height:38px;display:grid;place-items:center;border:1px solid var(--line);
+  border-radius:9px;background:var(--bg);color:var(--ink2);cursor:pointer;box-shadow:var(--shadow)}
+.tool:hover{color:var(--ink);border-color:var(--line2)}
+.tool.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.tool.live{color:var(--good);border-color:var(--good)}
+#scalebox{position:absolute;z-index:18;right:12px;bottom:12px;font-size:10.5px;font-family:var(--mono);
+  color:var(--ink2);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:4px 8px;
+  box-shadow:var(--shadow)}
+#scalebox:empty,#scalebox:has(#trafficStamp:empty){display:none}
+
+/* ── markers ───────────────────────────────────────────────── */
+.mk{cursor:pointer}
+.mk svg{width:26px;height:34px;filter:drop-shadow(0 3px 6px rgba(0,0,0,.35))}
+.me{width:16px;height:16px;border-radius:50%;background:var(--accent);border:2.5px solid #fff;
+  box-shadow:0 0 0 5px rgba(31,111,235,.22),0 2px 6px rgba(0,0,0,.3)}
+
+/* ── nav ───────────────────────────────────────────────────── */
+#nav{position:absolute;z-index:30;inset:0;pointer-events:none}
+#navCard{position:absolute;left:50%;transform:translateX(-50%);top:12px;width:min(520px,calc(100vw - 24px));
+  display:flex;gap:14px;align-items:center;padding:14px 16px;background:var(--bg);border:1px solid var(--line);
+  border-radius:var(--r-lg);box-shadow:var(--shadow-lg);pointer-events:auto}
+#navCard .turn{width:46px;height:46px;flex:none;border-radius:10px;background:var(--accent);color:#fff;
+  display:grid;place-items:center}
+#navCard .turn svg{width:24px;height:24px}
+#navDist{font-size:23px;font-weight:700;letter-spacing:-.7px;font-family:var(--mono)}
+#navInstr{font-size:14.5px;font-weight:550;margin-top:1px}
+#navMeta{font-size:11.5px;color:var(--ink2);margin-top:2px}
+#navBar{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom));
+  width:min(520px,calc(100vw - 24px));display:flex;align-items:center;gap:12px;padding:10px 14px;
+  background:var(--bg);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow-lg);pointer-events:auto}
+#navBar .stat{display:flex;flex-direction:column;min-width:0}
+#navBar .stat b{font-size:15px;font-weight:650;font-family:var(--mono)}
+#navBar .stat span{font-size:9.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--ink3)}
+.nb{height:34px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);
+  font-size:12.5px;font-weight:600;cursor:pointer}
+.nb:disabled{opacity:.4;cursor:not-allowed}
+.nb.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.nb.stop{color:var(--bad);border-color:var(--bad)}
+
+/* ── sheets ────────────────────────────────────────────────── */
+#diag,#fatal{position:absolute;inset:0;z-index:40;display:grid;place-items:center;padding:20px;
+  background:rgba(10,14,20,.5);overflow-y:auto}
+.sheet{position:relative;width:min(460px,100%);background:var(--bg);border:1px solid var(--line);
+  border-radius:var(--r-lg);padding:20px;box-shadow:var(--shadow-lg)}
+.sheet h2{margin:0 0 4px;font-size:17px;font-weight:650;letter-spacing:-.3px}
+.lede{margin:0 0 14px;font-size:12.5px;color:var(--ink2);line-height:1.6}
+.close{position:absolute;top:12px;right:12px}
+#svcList{list-style:none;margin:0;padding:0}
+#svcList li{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+#svcList i{width:8px;height:8px;border-radius:50%;background:var(--ink3);margin-top:6px;flex:none}
+#svcList i.ok{background:var(--good)} #svcList i.no{background:var(--bad)}
+#svcList i.wait{background:var(--warn);animation:bp .9s ease-in-out infinite}
+@keyframes bp{0%,100%{opacity:.3}50%{opacity:1}}
+#svcList b{width:104px;flex:none;font-size:12.5px;font-weight:600}
+#svcList span{flex:1;min-width:0;font-size:12px;color:var(--ink2);font-family:var(--mono);word-break:break-word}
+#diag label{display:block;margin:16px 0 5px;font-size:11px;font-weight:650;color:var(--ink2)}
+#ttKey{width:100%;height:40px;padding:0 11px;border:1px solid var(--line);border-radius:var(--r);
+  background:var(--bg2);outline:0;font-family:var(--mono);font-size:12.5px}
+#ttKey:focus{border-color:var(--accent)}
+.hint{margin:7px 0 0;font-size:11.5px;color:var(--ink2)}
+.actions{display:flex;gap:8px;margin-top:14px}
+#fatal pre{margin:12px 0 0;padding:10px;background:var(--bg2);border:1px solid var(--line);
+  border-radius:8px;font-size:11px;color:var(--bad);white-space:pre-wrap;max-height:140px;overflow:auto}
+
+#toast{position:absolute;z-index:50;left:50%;bottom:22px;transform:translate(-50%,14px);
+  max-width:min(460px,86vw);padding:11px 16px;background:#16191d;color:#fff;border-radius:10px;
+  font-size:12.5px;line-height:1.5;box-shadow:var(--shadow-lg);opacity:0;pointer-events:none;transition:.2s;text-align:center}
 #toast.on{opacity:1;transform:translate(-50%,0)}
-#hud.on ~ #toast{bottom:calc(112px + env(safe-area-inset-bottom))}
-#fail{position:absolute;inset:0;z-index:60;display:none;place-items:center;padding:22px;background:var(--bg)}
-#fail.on{display:grid}
-#failb{max-width:440px;padding:21px}
-#failb h3{margin:0 0 9px;font:650 17px var(--f)}
-#failb p{margin:0;font:400 12px var(--m);color:var(--ink2);line-height:1.65}
-#failb pre{margin:13px 0 0;padding:11px;background:var(--gl2);border:1px solid var(--ed);
-  font:400 10.5px var(--m);color:var(--mg);white-space:pre-wrap;max-height:130px;overflow:auto}
-#boot{position:absolute;z-index:45;left:50%;top:50%;transform:translate(-50%,-50%);
-  display:flex;align-items:center;gap:9px;padding:11px 16px;font:700 9.5px var(--m);letter-spacing:1.6px;
-  text-transform:uppercase;color:var(--cy);transition:opacity .35s}
-#boot.gone{opacity:0;pointer-events:none}
-.pulse{width:7px;height:7px;border-radius:50%;background:var(--cy);box-shadow:0 0 10px var(--cy);
-  animation:pl .9s ease-in-out infinite;display:inline-block}
-@keyframes pl{0%,100%{opacity:.22;transform:scale(.75)}50%{opacity:1;transform:scale(1.3)}}
-@media(max-width:600px){
-  #find{width:calc(100vw - 66px)}
-  #card{left:0;right:0;bottom:0;width:auto;max-width:none;padding-bottom:calc(15px + env(safe-area-inset-bottom))}
-  #foot{display:none}
-  .sv .sn{width:92px}
+html[data-theme="dark"] #toast{background:#eef1f5;color:#16191d}
+
+/* ── mobile ────────────────────────────────────────────────── */
+@media (max-width:760px){
+  :root{--pw:100%}
+  #panel{top:auto;height:min(72vh,560px);border-right:0;border-top:1px solid var(--line);
+    border-radius:16px 16px 0 0;padding-bottom:env(safe-area-inset-bottom)}
+  #panel.hid{transform:translateY(calc(100% - 132px))}
+  #panelToggle{display:none}
+  #tools{top:12px;right:12px}
+  #scalebox{bottom:auto;top:12px;left:12px;right:auto}
+  #navBar{bottom:auto;top:96px}
+  #brand{padding-top:10px}
 }
 </style>
 </head>
 <body>
 <div id="map"></div>
-<div id="grid"></div>
-<div id="boot"><span class="pulse"></span> initialising</div>
 
-<div id="find">
-  <div class="p" id="bar">
-    <span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span>
-    <input id="q" placeholder="search destination" autocomplete="off" spellcheck="false" enterkeyhint="search">
-    <button class="xb" id="qx" hidden title="Clear"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+<!-- ───────────────── trip planner ───────────────── -->
+<aside id="panel">
+  <header id="brand">
+    <div class="mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l6-3 6 3 6-3v13l-6 3-6-3-6 3V7z"/><path d="M9 4v13M15 7v13"/></svg>
+    </div>
+    <h1>Tern</h1>
+    <button class="ghost" id="themeBtn" title="Light or dark (T)" aria-label="Toggle theme">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.2M12 19.8V22M2 12h2.2M19.8 12H22M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M19.1 4.9l-1.6 1.6M6.5 17.5l-1.6 1.6"/></svg>
+    </button>
+    <button class="ghost" id="diagBtn" title="System check" aria-label="System check">
+      <span class="pip" id="diagPip" hidden></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.8"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-2.9 1.2 2 2 0 11-4 0 1.7 1.7 0 00-2.9-1.2l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.7 1.7 0 003 15a2 2 0 110-4 1.7 1.7 0 001.2-2.9l-.1-.1a2 2 0 112.8-2.8l.1.1A1.7 1.7 0 0010 4.2a2 2 0 114 0 1.7 1.7 0 002.9 1.2l.1-.1a2 2 0 112.8 2.8l-.1.1A1.7 1.7 0 0021 11a2 2 0 110 4z"/></svg>
+    </button>
+  </header>
+
+  <div id="planner">
+    <div class="fields">
+      <div class="rail">
+        <span class="dot start"></span><span class="bar"></span><span class="dot end"></span>
+      </div>
+      <div class="inputs">
+        <div class="field" data-slot="from">
+          <input id="fromInput" placeholder="Choose a starting point" autocomplete="off" spellcheck="false">
+          <button class="mini" id="useGps" title="Use my location">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7.5"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></svg>
+          </button>
+        </div>
+        <div class="field" data-slot="to">
+          <input id="toInput" placeholder="Where to?" autocomplete="off" spellcheck="false" enterkeyhint="search">
+          <button class="mini" id="clearTo" title="Clear" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </div>
+      </div>
+      <button class="mini swap" id="swapBtn" title="Swap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16M7 4L4 7M7 4l3 3M17 20V4M17 20l3-3M17 20l-3-3"/></svg>
+      </button>
+    </div>
+
+    <nav id="modes" role="tablist">
+      <button class="mode" data-mode="drive" role="tab" title="Drive">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14M4 17v-4.2l1.8-4.3A2 2 0 017.6 7h8.8a2 2 0 011.8 1.5L20 12.8V17"/><circle cx="7.5" cy="17" r="1.6"/><circle cx="16.5" cy="17" r="1.6"/></svg>
+        <span>Drive</span><em class="eta"></em>
+      </button>
+      <button class="mode" data-mode="transit" role="tab" title="Transit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="13" rx="2.5"/><path d="M6 10h12M9 20l-1.5 2M15 20l1.5 2M8 16.5h.01M16 16.5h.01"/></svg>
+        <span>Transit</span><em class="eta"></em>
+      </button>
+      <button class="mode" data-mode="bike" role="tab" title="Bike">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17" r="3.3"/><circle cx="18.5" cy="17" r="3.3"/><path d="M5.5 17l4-9h5M12 17l3-8M14 8h3"/></svg>
+        <span>Bike</span><em class="eta"></em>
+      </button>
+      <button class="mode" data-mode="walk" role="tab" title="Walk">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="1.8"/><path d="M11 21l2-6-2.5-2.5L9.5 9 13 7.5l3 2.5 2.5 1M10.5 12.5L7 15l-1 6"/></svg>
+        <span>Walk</span><em class="eta"></em>
+      </button>
+    </nav>
+
+    <div id="suggest" hidden></div>
+    <div id="results"></div>
   </div>
-  <div class="p" id="hits"></div>
+
+  <footer id="credit">
+    Map <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> ·
+    Data <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> ·
+    Transit <a href="https://transitous.org" target="_blank" rel="noopener">Transitous</a>
+  </footer>
+</aside>
+
+<button id="panelToggle" aria-label="Show or hide the planner">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>
+</button>
+
+<!-- ───────────────── map controls ───────────────── -->
+<div id="tools">
+  <button class="tool" id="locBtn" title="My location (G)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7.5"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></svg>
+  </button>
+  <button class="tool" id="trafficBtn" title="Live traffic">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="3"/><circle cx="12" cy="7" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="17" r="1.4"/></svg>
+  </button>
+  <button class="tool" id="tiltBtn" title="3D">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>
+  </button>
 </div>
 
-<div id="rail">
-  <div class="r" id="loc" title="GPS / follow (g)">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3.2M12 18.8V22M2 12h3.2M18.8 12H22"/><circle cx="12" cy="12" r="8"/></svg>
-  </div>
-  <div class="r" id="tilt" title="3D tilt"><span class="t">3D</span></div>
-  <div class="r" id="theme" title="Light / dark (t)">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.4M12 19.6V22M2 12h2.4M19.6 12H22M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M19.1 4.9l-1.7 1.7M6.6 17.4l-1.7 1.7"/></svg>
-  </div>
-  <div class="r" id="traf" title="Live traffic and closures"><span class="t">TRFC</span></div>
-  <div class="r" id="gear" title="Diagnostics and settings" style="position:relative">
-    <span class="bad" id="diagdot" style="display:none"></span>
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-2.9 1.2 2 2 0 11-4 0 1.7 1.7 0 00-2.9-1.2l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.7 1.7 0 003 15a2 2 0 110-4 1.7 1.7 0 001.2-2.9l-.1-.1a2 2 0 112.8-2.8l.1.1A1.7 1.7 0 0010 4.2a2 2 0 114 0 1.7 1.7 0 002.9 1.2l.1-.1a2 2 0 112.8 2.8l-.1.1A1.7 1.7 0 0021 11a2 2 0 110 4z"/></svg>
-  </div>
-</div>
+<div id="scalebox"><span id="trafficStamp"></span></div>
 
-<div class="p" id="foot"><span id="upd"></span></div>
-
-<div class="p" id="card"><button class="close" id="cardx">&times;</button><div id="cardb"></div></div>
-
-<div id="hud">
-  <div class="p" id="hudtop">
-    <div class="mi" id="hudmi"></div>
-    <div class="nt">
-      <div id="hudd">--</div>
-      <div id="hudi"></div>
-      <div id="hudr"></div>
-      <div id="gpschip" class="chip">GPS OFF</div>
+<!-- ───────────────── turn-by-turn ───────────────── -->
+<div id="nav" hidden>
+  <div id="navCard">
+    <div class="turn" id="navIcon"></div>
+    <div class="txt">
+      <div id="navDist">—</div>
+      <div id="navInstr"></div>
+      <div id="navMeta"></div>
     </div>
   </div>
-  <div class="p" id="hudbot">
-    <div class="cell"><div class="cv num" id="hudeta">--</div><div class="ck">arrival</div></div>
-    <div class="cell"><div class="cv num" id="hudrem">--</div><div class="ck">remaining</div></div>
-    <div class="cell"><div class="cv num" id="hudsp">--</div><div class="ck">speed</div></div>
-    <button class="stepb" id="hudprev" title="Previous step (left arrow)">&#9664;</button>
-    <button class="stepb next" id="hudnext" title="Next step (right arrow or space)">NEXT &#9654;</button>
-    <button id="hudx">END</button>
+  <div id="navBar">
+    <div class="stat"><b id="navEta">—</b><span>Arrive</span></div>
+    <div class="stat"><b id="navLeft">—</b><span>Left</span></div>
+    <div class="stat"><b id="navSpeed">—</b><span>Speed</span></div>
+    <button class="nb" id="navPrev" title="Previous (←)">Back</button>
+    <button class="nb primary" id="navNext" title="Next (→)">Next</button>
+    <button class="nb stop" id="navStop">End</button>
   </div>
 </div>
 
-<div id="diag">
-  <div class="p" id="diagb">
-    <button class="close" id="diagx">&times;</button>
-    <h3>System check</h3>
-    <p class="note">Every service this app depends on, tested live. Anything red is the reason something is not working.</p>
-    <div class="sv" id="sv-tile"><span class="sd"></span><span class="sn">Map tiles</span><span class="se">idle</span></div>
-    <div class="sv" id="sv-geo"><span class="sd"></span><span class="sn">Search</span><span class="se">idle</span></div>
-    <div class="sv" id="sv-rt1"><span class="sd"></span><span class="sn">Router</span><span class="se">idle</span></div>
-    <div class="sv" id="sv-rt2"><span class="sd"></span><span class="sn">Router backup</span><span class="se">idle</span></div>
-    <div class="sv" id="sv-traf"><span class="sd"></span><span class="sn">Live traffic</span><span class="se">idle</span></div>
-    <div class="sv" id="sv-gps"><span class="sd"></span><span class="sn">GPS</span><span class="se">idle</span></div>
-    <p class="fix" id="fix" style="display:none">Something above is blocked. This happens when the page is opened straight off the disk, because the browser treats a file as having no origin and some services refuse it. Fix: put this file in a folder, open a terminal there, run <b>python -m http.server 8000</b>, then visit <b>http://localhost:8000</b>. Everything above will go green.</p>
-    <label for="key">TomTom API key, for live traffic and closures</label>
-    <input id="key" placeholder="paste key here" spellcheck="false" autocomplete="off">
-    <div class="sv" style="border:0"><span class="sd" id="kdot"></span><span class="se" id="ktxt"></span></div>
-    <div class="row"><button class="btn go" id="keysave">Save key</button><button class="btn" id="retest">Retest</button></div>
+<!-- ───────────────── system check ───────────────── -->
+<div id="diag" hidden>
+  <div class="sheet">
+    <button class="ghost close" id="diagClose" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <h2>System check</h2>
+    <p class="lede">Every service this app depends on, tested live. Anything red is the reason something is not working.</p>
+    <ul id="svcList">
+      <li data-svc="tiles"><i></i><b>Map tiles</b><span>idle</span></li>
+      <li data-svc="geo"><i></i><b>Search</b><span>idle</span></li>
+      <li data-svc="drive"><i></i><b>Driving</b><span>idle</span></li>
+      <li data-svc="walkbike"><i></i><b>Walk &amp; bike</b><span>idle</span></li>
+      <li data-svc="transit"><i></i><b>Transit</b><span>idle</span></li>
+      <li data-svc="traffic"><i></i><b>Live traffic</b><span>idle</span></li>
+      <li data-svc="gps"><i></i><b>GPS</b><span>idle</span></li>
+    </ul>
+    <label for="ttKey">TomTom key, for live traffic and closures</label>
+    <input id="ttKey" placeholder="paste key here" spellcheck="false" autocomplete="off">
+    <p class="hint" id="keyHint"></p>
+    <div class="actions">
+      <button class="btn primary" id="saveKey">Save key</button>
+      <button class="btn" id="retest">Run again</button>
+    </div>
   </div>
 </div>
 
-<div class="p" id="toast"></div>
-<div id="fail"><div class="p" id="failb"></div></div>
+<div id="toast"></div>
+<div id="fatal" hidden><div class="sheet"><h2 id="fatalH"></h2><p id="fatalP"></p><pre id="fatalPre"></pre></div></div>
 
 <script>/* MapLibre GL JS 5.24.0 (BSD-3-Clause) */
 /**
@@ -342,779 +436,856 @@ return maplibregl$1;
 //# sourceMappingURL=maplibre-gl.js.map
 </script>
 <script>"use strict";
-const $=id=>document.getElementById(id);
-const OFM='https://tiles.openfreemap.org';
-const STYLES={dark:OFM+'/styles/dark', light:OFM+'/styles/bright'};
-const ls={
-  get(k,d){ try{ const v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } },
-  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+/* ═══════════════════════════════════════════════════════════
+   Tern — open trip planner
+   tiles OpenFreeMap · search Photon · drive OSRM
+   walk/bike Valhalla · transit Transitous (MOTIS) · traffic TomTom
+   ═══════════════════════════════════════════════════════════ */
+
+const $ = id => document.getElementById(id);
+const OFM = 'https://tiles.openfreemap.org';
+const STYLE = { light: OFM + '/styles/liberty', dark: OFM + '/styles/dark' };
+const MOTIS = 'https://api.transitous.org';
+
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v === null ? d : v; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
 };
-let theme=ls.get('tern.theme','dark');
-let TTKEY=ls.get('tern.ttkey','');
-let IMP=ls.get('tern.units','mi')==='mi';
-let mode=ls.get('tern.mode','drive');
-let trafficOn=ls.get('tern.traffic','0')==='1';
 
-document.documentElement.setAttribute('data-t',theme);
+let theme    = store.get('tern.theme', 'light');
+let units    = store.get('tern.units', 'imperial');
+let ttKey    = store.get('tern.ttkey', '');
+let mode     = store.get('tern.mode', 'drive');
+let trafficOn= store.get('tern.traffic', '0') === '1';
+document.documentElement.setAttribute('data-theme', theme);
 
-/* ---------------- network: every call times out and retries ---------------- */
-const NET={
-  async json(url,opt,cfg){
-    cfg=cfg||{};
-    const tries=cfg.tries==null?2:cfg.tries, ms=cfg.ms||12000, label=cfg.label||'Request';
+const IMP = () => units === 'imperial';
+
+/* ── network: timeout + retry on everything ───────────────── */
+const NET = {
+  async json(url, opt, cfg){
+    cfg = cfg || {};
+    const tries = cfg.tries == null ? 1 : cfg.tries;
+    const ms = cfg.ms || 12000;
+    const label = cfg.label || 'Request';
     let last;
-    for(let a=0;a<=tries;a++){
-      const ac=new AbortController();
-      const timer=setTimeout(()=>ac.abort(),ms);
-      let sig=ac.signal;
-      if(opt&&opt.signal&&typeof AbortSignal!=='undefined'&&AbortSignal.any){
-        try{ sig=AbortSignal.any([opt.signal,ac.signal]); }catch(e){}
+    for(let a = 0; a <= tries; a++){
+      const ac = new AbortController();
+      const timer = setTimeout(() => ac.abort(), ms);
+      let signal = ac.signal;
+      if(opt && opt.signal && typeof AbortSignal !== 'undefined' && AbortSignal.any){
+        try{ signal = AbortSignal.any([opt.signal, ac.signal]); }catch(e){}
       }
       try{
-        const r=await fetch(url,Object.assign({},opt,{signal:sig}));
+        const r = await fetch(url, Object.assign({}, opt, { signal }));
         clearTimeout(timer);
-        if(r.status===429) throw new Error(label+' is rate limited right now (429)');
-        if(r.status===403) throw new Error(label+' rejected the key (403)');
-        if(!r.ok) throw new Error(label+' returned HTTP '+r.status);
+        if(r.status === 429) throw new Error(label + ' is rate limited (429)');
+        if(r.status === 403) throw new Error(label + ' rejected the key (403)');
+        if(!r.ok) throw new Error(label + ' returned HTTP ' + r.status);
         return await r.json();
       }catch(e){
         clearTimeout(timer);
-        if(opt&&opt.signal&&opt.signal.aborted) throw e;          // caller cancelled, do not retry
-        last = (e.name==='AbortError') ? new Error(label+' timed out after '+(ms>=1000?Math.round(ms/1000)+'s':ms+'ms')) : e;
-        if(!navigator.onLine) { last=new Error('You are offline'); break; }
-        if(a<tries) await new Promise(f=>setTimeout(f,400*Math.pow(2,a)));
+        if(opt && opt.signal && opt.signal.aborted) throw e;
+        last = e.name === 'AbortError'
+          ? new Error(label + ' timed out after ' + (ms >= 1000 ? Math.round(ms/1000) + 's' : ms + 'ms'))
+          : e;
+        if(!navigator.onLine){ last = new Error('You are offline'); break; }
+        if(a < tries) await new Promise(f => setTimeout(f, 400 * Math.pow(2, a)));
       }
     }
     throw last;
   }
 };
 
-/* ---------------- formatting ---------------- */
-const fmtD=m=>IMP
-  ? (m<160?Math.round(m*3.28084)+' ft':(m/1609.34).toFixed(m<16093?1:0)+' mi')
-  : (m<1000?Math.round(m)+' m':(m/1000).toFixed(m<10000?1:0)+' km');
-const fmtT=s=>{ s=Math.round(s); const h=Math.floor(s/3600), m=Math.round((s%3600)/60);
-  return h ? (m? h+' hr '+m+' min' : h+' hr') : Math.max(1,m)+' min'; };
-const hav=(a,b)=>{ const R=6371008.8,t=x=>x*Math.PI/180;
-  const dLa=t(b.lat-a.lat), dLo=t(b.lon-a.lon);
-  const h=Math.sin(dLa/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dLo/2)**2;
-  return 2*R*Math.asin(Math.sqrt(h)); };
-const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-
-/* ---------------- failure surfaces ---------------- */
-const errs=[];
-function fail(msg){
-  if(!errs.includes(msg)) errs.push(msg);
-  $('failb').innerHTML='<h3>Something broke on startup</h3><p>'+esc(msg)+
-    '</p><pre>'+esc(errs.join('\n'))+'</pre>';
-  $('fail').classList.add('on');
+/* ── formatting ───────────────────────────────────────────── */
+const fmtDist = m => IMP()
+  ? (m < 161 ? Math.round(m * 3.28084) + ' ft' : (m/1609.34).toFixed(m < 16093 ? 1 : 0) + ' mi')
+  : (m < 1000 ? Math.round(m) + ' m' : (m/1000).toFixed(m < 10000 ? 1 : 0) + ' km');
+const fmtDur = s => {
+  s = Math.round(s);
+  const h = Math.floor(s/3600), m = Math.round((s % 3600)/60);
+  return h ? (m ? h + ' hr ' + m + ' min' : h + ' hr') : Math.max(1, m) + ' min';
+};
+const fmtShort = s => {
+  s = Math.round(s);
+  const h = Math.floor(s/3600), m = Math.round((s % 3600)/60);
+  return h ? h + 'h ' + m + 'm' : Math.max(1, m) + 'm';
+};
+const clock = d => new Date(d).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' });
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const hav = (a,b) => {
+  const R = 6371008.8, t = x => x * Math.PI/180;
+  const dLa = t(b.lat - a.lat), dLo = t(b.lon - a.lon);
+  const h = Math.sin(dLa/2)**2 + Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dLo/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+};
+function decodePoly(str, precision){
+  const f = Math.pow(10, precision == null ? 6 : precision);
+  let i = 0, lat = 0, lon = 0; const out = [];
+  while(i < str.length){
+    let b, sh = 0, res = 0;
+    do { b = str.charCodeAt(i++) - 63; res |= (b & 0x1f) << sh; sh += 5; } while(b >= 0x20);
+    lat += (res & 1) ? ~(res >> 1) : (res >> 1);
+    sh = 0; res = 0;
+    do { b = str.charCodeAt(i++) - 63; res |= (b & 0x1f) << sh; sh += 5; } while(b >= 0x20);
+    lon += (res & 1) ? ~(res >> 1) : (res >> 1);
+    out.push([lon/f, lat/f]);
+  }
+  return out;
 }
-let tt;
-function toast(m,ms){ const t=$('toast'); t.className='p on'; t.innerHTML=m;
-  clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('on'),ms||3000); }
-window.addEventListener('error',e=>{ errs.push(e.message); console.error(e.message); });
 
-/* ---------------- map ---------------- */
+/* ── toast / fatal ────────────────────────────────────────── */
+let toastT;
+function toast(msg, ms){
+  const t = $('toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), ms || 3200);
+}
+const bootErrs = [];
+function fatal(h, p){
+  $('fatalH').textContent = h; $('fatalP').textContent = p;
+  $('fatalPre').textContent = bootErrs.slice(0,6).join('\n');
+  $('fatal').hidden = false;
+}
+window.addEventListener('error', e => { bootErrs.push(e.message); });
+
+/* ── map ──────────────────────────────────────────────────── */
 let map;
 try{
-  const probe=document.createElement('canvas');
-  if(!(probe.getContext('webgl2')||probe.getContext('webgl')))
-    throw new Error('WebGL is not available in this browser. Enable hardware acceleration, or try Chrome or Edge.');
-  map=new maplibregl.Map({
-    container:'map', style:STYLES[theme],
-    center:[-80.8431,35.2271], zoom:12.4, pitch:52, bearing:-14,
-    antialias:true, fadeDuration:110, maxTileCacheSize:500, hash:false,
-    attributionControl:{compact:true, customAttribution:'OpenFreeMap &middot; OpenStreetMap'}
+  const probe = document.createElement('canvas');
+  if(!(probe.getContext('webgl2') || probe.getContext('webgl')))
+    throw new Error('WebGL is unavailable. Turn on hardware acceleration, or use Chrome, Edge or Firefox.');
+  map = new maplibregl.Map({
+    container:'map', style: STYLE[theme],
+    center:[-80.8431, 35.2271], zoom: 12.4, pitch: 0,
+    antialias:true, fadeDuration:110, maxTileCacheSize:520,
+    attributionControl:false
   });
-  map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'bottom-right');
-  map.addControl(new maplibregl.ScaleControl({unit:IMP?'imperial':'metric'}),'bottom-right');
-}catch(e){ fail(e.message); throw e; }
+  map.addControl(new maplibregl.ScaleControl({ unit: IMP() ? 'imperial' : 'metric' }), 'bottom-right');
+}catch(e){ bootErrs.push(e.message); fatal('Cannot start the map', e.message); throw e; }
 
-map.on('error',e=>{
-  const m=(e&&e.error&&(e.error.message||String(e.error)))||'map error';
-  errs.push(m); console.warn('[tern]',m);
-  if(/style|tilejson|planet|glyph/i.test(m)) fail('Could not load the map style from OpenFreeMap. '+
-    'If you are offline, or this file is open inside an app that blocks network requests, tiles cannot load. '+
-    'Open the file directly in Chrome or Edge.');
+let gotTile = false;
+map.on('data', e => { if(e.tile) gotTile = true; });
+map.on('error', e => {
+  const m = (e && e.error && (e.error.message || String(e.error))) || 'map error';
+  if(!bootErrs.includes(m)) bootErrs.push(m);
 });
-let firstTile=false;
-map.on('data',e=>{ if(e.tile&&!firstTile){ firstTile=true;
-  const b=$('boot'); if(b){ b.classList.add('gone'); setTimeout(()=>b.remove(),400); } } });
-setTimeout(()=>{ if(!firstTile) fail('No map tiles arrived within 12 seconds. '+
-  'Check the internet connection, and make sure this file is open in a browser rather than inside another app.'); },12000);
+setTimeout(() => {
+  if(!gotTile) fatal('No map tiles loaded',
+    'The page is running but could not reach the tile server. Check your connection, then use System check for detail.');
+}, 14000);
 
-const firstSymbol=()=>{ const ly=map.getStyle().layers||[];
-  for(const l of ly) if(l.type==='symbol') return l.id; return undefined; };
+const firstSymbol = () => {
+  const ls = (map.getStyle() && map.getStyle().layers) || [];
+  for(const l of ls) if(l.type === 'symbol') return l.id;
+};
 
-/* ---------------- overlays, rebuilt on every style load ---------------- */
-function addOverlays(){
+const EMPTY = { type:'FeatureCollection', features:[] };
+function addLayers(){
   if(!map.getSource('route')){
-    map.addSource('route',{type:'geojson',data:fc()});
-    map.addLayer({id:'route-glow',type:'line',source:'route',
-      layout:{'line-cap':'round','line-join':'round'},
-      paint:{'line-color':'#00e8ff','line-blur':12,'line-opacity':.5,
-        'line-width':['interpolate',['linear'],['zoom'],8,14,16,30]}},firstSymbol());
-    map.addLayer({id:'route-case',type:'line',source:'route',
-      layout:{'line-cap':'round','line-join':'round'},
-      paint:{'line-color':theme==='dark'?'#00323c':'#005566',
-        'line-width':['interpolate',['linear'],['zoom'],8,8,16,17],'line-opacity':.95}},firstSymbol());
-    map.addLayer({id:'route-line',type:'line',source:'route',
-      layout:{'line-cap':'round','line-join':'round'},
-      paint:{'line-color':'#00e8ff','line-width':['interpolate',['linear'],['zoom'],8,3.5,16,8]}},firstSymbol());
+    map.addSource('route', { type:'geojson', data: EMPTY });
+    map.addLayer({ id:'route-case', type:'line', source:'route',
+      layout:{ 'line-cap':'round','line-join':'round' },
+      paint:{ 'line-color': theme === 'dark' ? '#0b0d10' : '#ffffff',
+        'line-width':['interpolate',['linear'],['zoom'],8,7,16,15] } }, firstSymbol());
+    map.addLayer({ id:'route-line', type:'line', source:'route',
+      filter:['!=',['get','walk'], true],
+      layout:{ 'line-cap':'round','line-join':'round' },
+      paint:{ 'line-color':['get','color'],
+        'line-width':['interpolate',['linear'],['zoom'],8,4,16,9] } }, firstSymbol());
+    map.addLayer({ id:'route-walk', type:'line', source:'route',
+      filter:['==',['get','walk'], true],
+      layout:{ 'line-cap':'butt','line-join':'round' },
+      paint:{ 'line-color':['get','color'], 'line-dasharray':[0.1,1.9],
+        'line-width':['interpolate',['linear'],['zoom'],8,4,16,8] } }, firstSymbol());
   }
-  if(!map.getSource('inc')){
-    map.addSource('inc',{type:'geojson',data:fc()});
-    map.addLayer({id:'inc-line',type:'line',source:'inc',
-      filter:['==',['geometry-type'],'LineString'],
-      layout:{'line-cap':'round'},
-      paint:{'line-color':['get','col'],'line-width':['interpolate',['linear'],['zoom'],9,3,16,7],'line-opacity':.95}});
-    map.addLayer({id:'inc-pt',type:'circle',source:'inc',
-      filter:['==',['geometry-type'],'Point'],
-      paint:{'circle-radius':['interpolate',['linear'],['zoom'],9,4,16,8],
-        'circle-color':['get','col'],'circle-stroke-color':'#fff','circle-stroke-width':1.6}});
-    map.on('click','inc-line',e=>showIncident(e.features[0]));
-    map.on('click','inc-pt',e=>showIncident(e.features[0]));
-    for(const L of ['inc-line','inc-pt']){
-      map.on('mouseenter',L,()=>map.getCanvas().style.cursor='pointer');
-      map.on('mouseleave',L,()=>map.getCanvas().style.cursor='');
-    }
+  if(!map.getSource('stops')){
+    map.addSource('stops', { type:'geojson', data: EMPTY });
+    map.addLayer({ id:'stops', type:'circle', source:'stops',
+      paint:{ 'circle-radius':4.5, 'circle-color':'#ffffff',
+        'circle-stroke-color':['get','color'], 'circle-stroke-width':2.5 } });
   }
-  if(trafficOn) addTraffic();
-  if(routeGeo) setRoute(routeGeo);
-  if(incData) map.getSource('inc').setData(incData);
+  if(trafficOn && ttKey) addTraffic();
+  if(current) paintRoute(current);
 }
-const fc=()=>({type:'FeatureCollection',features:[]});
-map.on('load',()=>{
-  addOverlays(); wireMapClicks(); locate(true);
-  try{
-    const saved=JSON.parse(ls.get('tern.dest','null'));
-    if(saved&&isFinite(saved.lat)&&isFinite(saved.lon)){
-      dest=saved;
-      destMk=new maplibregl.Marker({element:pinEl(),anchor:'bottom'})
-        .setLngLat([saved.lon,saved.lat]).addTo(map);
-      showPlace();
-    }
-  }catch(e){}
-});
+map.on('load', () => { addLayers(); wireMap(); initialLocate(); });
 
-/* ---------------- traffic ---------------- */
+/* ── places ───────────────────────────────────────────────── */
+let abortGeo;
+async function geocode(q){
+  const c = map.getCenter();
+  if(abortGeo) abortGeo.abort();
+  abortGeo = new AbortController();
+  const url = 'https://photon.komoot.io/api?q=' + encodeURIComponent(q) +
+    '&limit=7&lang=en&lat=' + c.lat.toFixed(4) + '&lon=' + c.lng.toFixed(4);
+  const j = await NET.json(url, { signal: abortGeo.signal }, { tries:1, ms:8000, label:'Search' });
+  return (j.features || []).map(f => {
+    const p = f.properties || {};
+    const street = p.housenumber && p.street ? p.housenumber + ' ' + p.street : p.street;
+    return {
+      name: p.name || street || 'Unnamed place',
+      detail: [street && p.name ? street : null, p.city || p.county, p.state, p.country].filter(Boolean).join(', '),
+      lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0]
+    };
+  });
+}
+async function reverse(lat, lon){
+  try{
+    const j = await NET.json('https://photon.komoot.io/reverse?lat=' + lat + '&lon=' + lon + '&limit=1&lang=en',
+      null, { tries:1, ms:8000, label:'Address lookup' });
+    const f = (j.features || [])[0];
+    if(!f) return null;
+    const p = f.properties || {};
+    const street = p.housenumber && p.street ? p.housenumber + ' ' + p.street : p.street;
+    return { name: p.name || street || 'Dropped pin',
+      detail: [p.city || p.county, p.state, p.postcode].filter(Boolean).join(', '),
+      lat, lon };
+  }catch(e){ return null; }
+}
+
+/* ── trip state ───────────────────────────────────────────── */
+const trip = { from:null, to:null };
+let current = null;          // chosen itinerary
+let options = [];            // itineraries for the active mode
+const etaCache = {};         // mode -> seconds
+let markFrom = null, markTo = null;
+
+function pin(color){
+  const d = document.createElement('div'); d.className = 'mk';
+  d.innerHTML = '<svg viewBox="0 0 26 34"><path d="M13 33S25 21 25 12.5A12 12 0 101 12.5C1 21 13 33 13 33z" fill="' +
+    color + '"/><circle cx="13" cy="12.5" r="4.4" fill="#fff"/></svg>';
+  return d;
+}
+function setPlace(slot, place){
+  if(!place || !isFinite(place.lat) || !isFinite(place.lon)) return;
+  trip[slot] = place;
+  $(slot + 'Input').value = place.name;
+  if(slot === 'to') $('clearTo').hidden = false;
+  const mk = slot === 'from' ? markFrom : markTo;
+  if(mk) mk.remove();
+  const m = new maplibregl.Marker({ element: pin(slot === 'from' ? '#6b7684' : '#1f6feb'), anchor:'bottom' })
+    .setLngLat([place.lon, place.lat]).addTo(map);
+  if(slot === 'from') markFrom = m; else markTo = m;
+  store.set('tern.' + slot, JSON.stringify(place));
+  if(trip.from && trip.to) planAll();
+  else map.flyTo({ center:[place.lon, place.lat], zoom: Math.max(map.getZoom(), 14.5), speed:1.3 });
+}
+
+/* ── routers, all returning one shape ─────────────────────── */
+const COLOR = { WALK:'#6b7684', BIKE:'#0f9d58', CAR:'#1f6feb', TRANSIT:'#8b5cf6' };
+
+function osrmText(s){
+  const m = s.maneuver || {}, mod = (m.modifier || '').replace(/_/g,' '), on = s.name ? ' onto ' + s.name : '';
+  const dir = b => ['north','northeast','east','southeast','south','southwest','west','northwest'][Math.round(((b||0)%360)/45)%8];
+  switch(m.type){
+    case 'depart': return 'Head ' + dir(m.bearing_after) + (s.name ? ' on ' + s.name : '');
+    case 'arrive': return 'Arrive at your destination';
+    case 'turn': return 'Turn ' + mod + on;
+    case 'new name': return 'Continue' + (s.name ? ' on ' + s.name : '');
+    case 'merge': return 'Merge ' + mod + on;
+    case 'on ramp': return 'Take the ramp ' + mod + on;
+    case 'off ramp': return 'Take the exit ' + mod + on;
+    case 'fork': return 'Keep ' + mod + on;
+    case 'roundabout': case 'rotary': return 'Enter the roundabout' + (m.exit ? ' and take exit ' + m.exit : '');
+    case 'end of road': return 'At the end of the road, turn ' + mod + on;
+    case 'continue': return 'Continue ' + mod + on;
+    default: return (m.type ? m.type[0].toUpperCase() + m.type.slice(1) : 'Continue') + (mod ? ' ' + mod : '') + on;
+  }
+}
+async function routeDrive(a, b){
+  const url = 'https://router.project-osrm.org/route/v1/driving/' +
+    a.lon + ',' + a.lat + ';' + b.lon + ',' + b.lat + '?overview=full&geometries=geojson&steps=true';
+  const j = await NET.json(url, null, { tries:1, ms:15000, label:'Driving router' });
+  const r = (j.routes || [])[0];
+  if(!r) throw new Error('No driving route exists between those points');
+  const steps = [];
+  r.legs.forEach(l => l.steps.forEach(s => {
+    const m = s.maneuver || {};
+    steps.push({ text: osrmText(s), dist: s.distance, road: s.name || '',
+      lon: m.location ? m.location[0] : null, lat: m.location ? m.location[1] : null });
+  }));
+  return { mode:'drive', duration:r.duration, distance:r.distance, source:'OSRM',
+    legs:[{ kind:'CAR', color:COLOR.CAR, coords:r.geometry.coordinates, steps }] };
+}
+async function routeValhalla(a, b, costing){
+  const body = { locations:[{lat:a.lat,lon:a.lon},{lat:b.lat,lon:b.lon}], costing,
+    directions_options:{ units: IMP() ? 'miles' : 'kilometers', language:'en-US' } };
+  const j = await NET.json(MOTIS_FALLBACK_VALHALLA, { method:'POST',
+    headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) },
+    { tries:1, ms:20000, label: costing === 'bicycle' ? 'Cycling router' : 'Walking router' });
+  const t = j.trip;
+  if(!t || !t.legs) throw new Error('No route found for that mode');
+  const unit = IMP() ? 1609.34 : 1000;
+  let coords = [], steps = [];
+  t.legs.forEach(l => {
+    const shp = decodePoly(l.shape, 6);
+    coords = coords.concat(shp);
+    (l.maneuvers || []).forEach(m => {
+      const pt = shp[Math.min(shp.length - 1, m.begin_shape_index || 0)] || null;
+      steps.push({ text: m.instruction, dist:(m.length || 0) * unit,
+        road:(m.street_names || []).join(', '), lon: pt ? pt[0] : null, lat: pt ? pt[1] : null });
+    });
+  });
+  return { mode: costing === 'bicycle' ? 'bike' : 'walk', duration:t.summary.time,
+    distance:t.summary.length * unit, source:'Valhalla',
+    legs:[{ kind: costing === 'bicycle' ? 'BIKE' : 'WALK',
+      color: costing === 'bicycle' ? COLOR.BIKE : COLOR.WALK, coords, steps }] };
+}
+const MOTIS_FALLBACK_VALHALLA = 'https://valhalla1.openstreetmap.de/route';
+
+function transitLabel(m){
+  if(!m) return 'Transit';
+  const k = String(m).toUpperCase();
+  if(k === 'BUS' || k === 'COACH') return 'Bus';
+  if(k === 'SUBWAY' || k === 'METRO') return 'Subway';
+  if(k === 'LIGHT_RAIL' || k === 'STREETCAR') return 'Light rail';
+  if(k === 'TRAM') return 'Tram';
+  if(k === 'FERRY') return 'Ferry';
+  if(k === 'CABLE_CAR' || k === 'FUNICULAR' || k === 'AERIAL_LIFT') return 'Cable car';
+  if(/RAIL|TRAIN|SUBURBAN|REGIONAL|HIGHSPEED|LONG_DISTANCE|NIGHT/.test(k)) return 'Train';
+  return k.replace(/_/g, ' ').toLowerCase().replace(/^./, c => c.toUpperCase());
+}
+
+async function routeTransit(a, b){
+  const url = MOTIS + '/api/v5/plan?fromPlace=' + a.lat + ',' + a.lon +
+    '&toPlace=' + b.lat + ',' + b.lon +
+    '&time=' + encodeURIComponent(new Date().toISOString()) +
+    '&numItineraries=4&pedestrianProfile=FOOT';
+  const j = await NET.json(url, null, { tries:1, ms:20000, label:'Transit router' });
+  const its = j.itineraries || [];
+  if(!its.length) throw new Error('NO_TRANSIT');
+  return its.map(it => {
+    const legs = (it.legs || []).map(l => {
+      const g = l.legGeometry || {};
+      const coords = g.points ? decodePoly(g.points, g.precision == null ? 6 : g.precision) : [];
+      const isWalk = l.mode === 'WALK';
+      const kind = isWalk ? 'WALK' : 'TRANSIT';
+      return {
+        kind, color: isWalk ? COLOR.WALK : (l.routeColor ? '#' + String(l.routeColor).replace(/^#/,'') : COLOR.TRANSIT),
+        coords,
+        line: l.routeShortName || l.displayName || '',
+        vehicle: transitLabel(l.mode),
+        headsign: l.headsign || (l.to && l.to.name) || '',
+        fromName: (l.from && l.from.name) || '', toName: (l.to && l.to.name) || '',
+        startTime: l.startTime, endTime: l.endTime,
+        duration: l.duration, distance: l.distance || 0, steps: []
+      };
+    });
+    const dur = it.duration != null ? it.duration
+      : (new Date(it.endTime) - new Date(it.startTime))/1000;
+    return { mode:'transit', duration:dur,
+      distance: legs.reduce((s,l) => s + (l.distance || 0), 0),
+      depart: it.startTime, arrive: it.endTime,
+      transfers: Math.max(0, legs.filter(l => l.kind === 'TRANSIT').length - 1),
+      source:'Transitous', legs };
+  });
+}
+async function planMode(m){
+  const a = trip.from, b = trip.to;
+  if(m === 'drive')  return [await routeDrive(a,b)];
+  if(m === 'walk')   return [await routeValhalla(a,b,'pedestrian')];
+  if(m === 'bike')   return [await routeValhalla(a,b,'bicycle')];
+  return await routeTransit(a,b);
+}
+
+/* ── planning ─────────────────────────────────────────────── */
+let planToken = 0;
+async function planAll(){
+  if(!trip.from || !trip.to) return;
+  const token = ++planToken;
+  options = []; current = null;
+  paintRoute(null);
+  $('results').innerHTML = '<div class="note">Finding routes…</div>';
+  document.querySelectorAll('.mode').forEach(el => { el.classList.add('busy'); el.querySelector('em').textContent = ''; });
+
+  const jobs = ['drive','transit','bike','walk'].map(async m => {
+    try{
+      const res = await planMode(m);
+      if(token !== planToken) return;
+      etaCache[m] = res[0] ? res[0].duration : null;
+      setTab(m, res[0] ? fmtShort(res[0].duration) : '—');
+      if(m === mode){ options = res; current = res[0]; renderOptions(); paintRoute(current); fitRoute(current); }
+    }catch(e){
+      if(token !== planToken) return;
+      etaCache[m] = null;
+      setTab(m, e.message === 'NO_TRANSIT' ? 'none' : '—');
+      if(m === mode){ options = []; current = null; renderError(m, e); }
+    }
+  });
+  await Promise.all(jobs);
+}
+function setTab(m, txt){
+  const el = document.querySelector('.mode[data-mode="' + m + '"]');
+  if(!el) return;
+  el.classList.remove('busy');
+  el.querySelector('em').textContent = txt;
+}
+function renderError(m, e){
+  const why = e.message === 'NO_TRANSIT'
+    ? 'No public transport connection was found for this trip. Transitous only has data where a transit agency publishes an open GTFS feed, and coverage is thin in much of the United States.'
+    : esc(e.message);
+  $('results').innerHTML = '<div class="note"><b>No ' + m + ' route.</b><br>' + why + '</div>';
+}
+
+/* ── rendering routes ─────────────────────────────────────── */
+function paintRoute(it){
+  const src = map.getSource('route'), ssrc = map.getSource('stops');
+  if(!src) return;
+  if(!it){ src.setData(EMPTY); if(ssrc) ssrc.setData(EMPTY); return; }
+  const feats = it.legs.filter(l => l.coords && l.coords.length > 1).map(l => ({
+    type:'Feature', properties:{ color:l.color, walk: l.kind === 'WALK' },
+    geometry:{ type:'LineString', coordinates:l.coords }
+  }));
+  src.setData({ type:'FeatureCollection', features: feats });
+  if(ssrc){
+    const pts = [];
+    it.legs.forEach(l => {
+      if(l.kind === 'TRANSIT' && l.coords.length){
+        pts.push({ type:'Feature', properties:{ color:l.color },
+          geometry:{ type:'Point', coordinates:l.coords[0] } });
+        pts.push({ type:'Feature', properties:{ color:l.color },
+          geometry:{ type:'Point', coordinates:l.coords[l.coords.length-1] } });
+      }
+    });
+    ssrc.setData({ type:'FeatureCollection', features: pts });
+  }
+}
+function fitRoute(it){
+  if(!it) return;
+  let mnx=180,mny=90,mxx=-180,mxy=-90, any=false;
+  it.legs.forEach(l => l.coords.forEach(p => {
+    any=true; mnx=Math.min(mnx,p[0]); mxx=Math.max(mxx,p[0]); mny=Math.min(mny,p[1]); mxy=Math.max(mxy,p[1]);
+  }));
+  if(!any) return;
+  const wide = innerWidth >= 760;
+  map.fitBounds([[mnx,mny],[mxx,mxy]], { duration:800, pitch:0,
+    padding:{ top:70, right:60, bottom: wide ? 60 : Math.round(innerHeight*0.5), left: wide ? 432 : 40 } });
+}
+const ICON = {
+  WALK:'<path d="M13 4.2a1.6 1.6 0 100-.1zM11 21l2-6-2.5-2.5L9.5 9 13 7.5l3 2.5 2.5 1M10.5 12.5L7 15l-1 6"/>',
+  BIKE:'<circle cx="5.5" cy="17" r="3.3"/><circle cx="18.5" cy="17" r="3.3"/><path d="M5.5 17l4-9h5M12 17l3-8"/>',
+  CAR:'<path d="M5 17h14M4 17v-4.2l1.8-4.3A2 2 0 017.6 7h8.8a2 2 0 011.8 1.5L20 12.8V17"/>',
+  TRANSIT:'<rect x="6" y="3" width="12" height="13" rx="2.5"/><path d="M6 10h12M9 20l-1.5 2M15 20l1.5 2"/>'
+};
+const svg = (p, s) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' +
+  (s || 1.8) + '" stroke-linecap="round" stroke-linejoin="round">' + p + '</svg>';
+
+function renderOptions(){
+  if(!options.length){ $('results').innerHTML = ''; return; }
+  const html = options.map((it, i) => {
+    const sel = it === current ? ' on' : '';
+    let chain = '';
+    if(it.mode === 'transit'){
+      const parts = [];
+      it.legs.forEach(l => {
+        if(l.kind === 'WALK'){
+          parts.push('<span class="pill">' + svg(ICON.WALK, 2) + fmtShort(l.duration || 0) + '</span>');
+        } else {
+          parts.push('<span class="pill t" style="background:' + l.color + '">' +
+            svg(ICON.TRANSIT, 2) + esc(l.line || l.vehicle) + '</span>');
+        }
+      });
+      chain = '<div class="chain">' + parts.join('<span class="sepx">›</span>') + '</div>';
+    }
+    const when = it.depart ? clock(it.depart) + ' → ' + clock(it.arrive) : '';
+    const sum = it.mode === 'transit'
+      ? (it.transfers === 0 ? 'Direct' : it.transfers + ' transfer' + (it.transfers > 1 ? 's' : ''))
+      : '';
+    return '<div class="opt' + sel + '" data-i="' + i + '">' +
+      '<div class="top"><span class="dur">' + fmtDur(it.duration) + '</span>' +
+      '<span class="dist">' + fmtDist(it.distance) + '</span>' +
+      (when ? '<span class="when">' + when + '</span>' : '') + '</div>' +
+      chain + (sum ? '<div class="sum">' + sum + '</div>' : '') +
+      (it === current ? detailHtml(it) : '') + '</div>';
+  }).join('');
+  $('results').innerHTML = html;
+  $('results').querySelectorAll('.opt').forEach(el => {
+    el.addEventListener('click', ev => {
+      if(ev.target.closest('.step') || ev.target.closest('.btn')) return;
+      current = options[+el.dataset.i];
+      renderOptions(); paintRoute(current); fitRoute(current);
+    });
+  });
+  const startBtn = $('startNav');
+  if(startBtn) startBtn.onclick = () => startNav(current);
+  const unitBtn = $('unitBtn');
+  if(unitBtn) unitBtn.onclick = () => {
+    units = IMP() ? 'metric' : 'imperial'; store.set('tern.units', units); planAll();
+  };
+  $('results').querySelectorAll('.step').forEach(el => el.addEventListener('click', () => {
+    const leg = current.legs[+el.dataset.l], s = leg.steps[+el.dataset.s];
+    if(s && s.lon != null) map.flyTo({ center:[s.lon, s.lat], zoom:16.5, speed:1.4 });
+  }));
+}
+function detailHtml(it){
+  let rows = '';
+  if(it.mode === 'transit'){
+    rows = it.legs.map(l => {
+      const head = l.kind === 'WALK'
+        ? 'Walk ' + fmtShort(l.duration || 0) + (l.toName ? ' to ' + esc(l.toName) : '')
+        : esc(l.vehicle) + (l.line ? ' ' + esc(l.line) : '') + (l.headsign ? ' toward ' + esc(l.headsign) : '');
+      const sub = l.kind === 'WALK'
+        ? fmtDist(l.distance || 0)
+        : clock(l.startTime) + ' ' + esc(l.fromName) + ' → ' + clock(l.endTime) + ' ' + esc(l.toName);
+      return '<div class="step"><div class="ic">' + svg(l.kind === 'WALK' ? ICON.WALK : ICON.TRANSIT) +
+        '</div><div><div class="a">' + head + '</div><div class="b">' + sub + '</div></div></div>';
+    }).join('');
+  } else {
+    const leg = it.legs[0];
+    rows = leg.steps.map((s, i) =>
+      '<div class="step" data-l="0" data-s="' + i + '"><div class="ic">' + turnIcon(s.text) +
+      '</div><div><div class="a">' + esc(s.text) + '</div><div class="b">' +
+      (s.dist ? fmtDist(s.dist) : '') + (s.road ? ' · ' + esc(s.road) : '') + '</div></div></div>').join('');
+  }
+  const canNav = it.mode !== 'transit' && it.legs[0] && it.legs[0].steps.length;
+  return '<div class="go">' +
+      (canNav ? '<button class="btn primary" id="startNav">Start</button>' : '') +
+      '<button class="btn" id="unitBtn">' + (IMP() ? 'mi' : 'km') + '</button></div>' +
+    '<div class="steps">' + rows + '</div>';
+}
+function turnIcon(t){
+  const a = (t || '').toLowerCase();
+  if(a.includes('left'))  return svg('<path d="M9 5L4 10l5 5"/><path d="M4 10h10a6 6 0 016 6v3"/>', 2.1);
+  if(a.includes('right')) return svg('<path d="M15 5l5 5-5 5"/><path d="M20 10H10a6 6 0 00-6 6v3"/>', 2.1);
+  if(a.includes('arrive') || a.includes('destination'))
+    return svg('<path d="M12 22s7-6.3 7-12a7 7 0 10-14 0c0 5.7 7 12 7 12z"/><circle cx="12" cy="10" r="2"/>', 2);
+  return svg('<path d="M12 21V5"/><path d="M6 11l6-6 6 6"/>', 2.1);
+}
+
+/* ── suggestions ──────────────────────────────────────────── */
+let sugList = [], sugSel = -1, sugSlot = 'to', sugTimer;
+function bindField(slot){
+  const input = $(slot + 'Input');
+  input.addEventListener('input', () => {
+    sugSlot = slot;
+    if(slot === 'to') $('clearTo').hidden = !input.value;
+    clearTimeout(sugTimer);
+    const v = input.value.trim();
+    if(v.length < 2){ hideSug(); return; }
+    sugTimer = setTimeout(async () => {
+      try{ sugList = await geocode(v); sugSel = -1; drawSug(); }
+      catch(e){
+        if(e.name === 'AbortError') return;
+        $('suggest').hidden = false;
+        $('suggest').innerHTML = '<div class="note" style="padding:11px">' + esc(e.message) + '</div>';
+      }
+    }, 240);
+  });
+  input.addEventListener('keydown', e => {
+    if(e.key === 'Escape'){ hideSug(); input.blur(); return; }
+    if(!sugList.length) return;
+    if(e.key === 'ArrowDown'){ e.preventDefault(); sugSel = Math.min(sugList.length-1, sugSel+1); drawSug(); }
+    else if(e.key === 'ArrowUp'){ e.preventDefault(); sugSel = Math.max(0, sugSel-1); drawSug(); }
+    else if(e.key === 'Enter'){ e.preventDefault(); choose(sugList[sugSel < 0 ? 0 : sugSel]); }
+  });
+}
+function drawSug(){
+  const box = $('suggest');
+  if(!sugList.length){ box.hidden = false; box.innerHTML = '<div class="note" style="padding:11px">No matches.</div>'; return; }
+  box.hidden = false;
+  box.innerHTML = sugList.map((r,i) =>
+    '<div class="sug' + (i === sugSel ? ' sel' : '') + '" data-i="' + i + '">' +
+    '<span class="pin">' + svg('<path d="M12 22s7-6.3 7-12a7 7 0 10-14 0c0 5.7 7 12 7 12z"/><circle cx="12" cy="10" r="2.4"/>', 2) + '</span>' +
+    '<span style="min-width:0"><b>' + esc(r.name) + '</b><small>' + esc(r.detail) + '</small></span></div>').join('');
+  box.querySelectorAll('.sug').forEach(el => el.addEventListener('click', () => choose(sugList[+el.dataset.i])));
+}
+function hideSug(){ $('suggest').hidden = true; sugList = []; sugSel = -1; }
+function choose(r){ if(!r) return; hideSug(); setPlace(sugSlot, r); }
+
+/* ── map interaction ──────────────────────────────────────── */
+function wireMap(){
+  map.on('click', async e => {
+    const hit = map.queryRenderedFeatures(e.point).find(f =>
+      f.layer && /poi|place/i.test(f.layer['source-layer'] || '') && f.properties && f.properties.name);
+    const base = { lat:e.lngLat.lat, lon:e.lngLat.lng };
+    if(hit){
+      setPlace(trip.from ? 'to' : 'from',
+        { name: hit.properties.name, detail:'', lat: base.lat, lon: base.lon });
+      return;
+    }
+    const slot = trip.from ? 'to' : 'from';
+    setPlace(slot, { name:'Pin ' + base.lat.toFixed(4) + ', ' + base.lon.toFixed(4), detail:'', ...base });
+    const got = await reverse(base.lat, base.lon);
+    if(got){ trip[slot] = got; $(slot + 'Input').value = got.name; }
+  });
+  map.on('mousemove', e => {
+    const hit = map.queryRenderedFeatures(e.point).find(f =>
+      f.layer && /poi/i.test(f.layer['source-layer'] || '') && f.properties && f.properties.name);
+    map.getCanvas().style.cursor = hit ? 'pointer' : '';
+  });
+}
+
+/* ── GPS ──────────────────────────────────────────────────── */
+let me = null, meMk = null, watch = null, following = false, speed = null;
+function showMe(lat, lon){
+  me = { lat, lon };
+  if(!meMk){
+    const d = document.createElement('div'); d.className = 'me';
+    meMk = new maplibregl.Marker({ element:d }).setLngLat([lon, lat]).addTo(map);
+  } else meMk.setLngLat([lon, lat]);
+}
+function initialLocate(){
+  if(!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(p => {
+    showMe(p.coords.latitude, p.coords.longitude);
+    $('locBtn').classList.add('live');
+    if(!trip.from){
+      trip.from = { name:'Your location', detail:'', lat:me.lat, lon:me.lon };
+      $('fromInput').value = 'Your location';
+      if(trip.to) planAll();
+    }
+    if(!trip.to) map.flyTo({ center:[me.lon, me.lat], zoom:14, speed:1.2 });
+  }, () => {}, { enableHighAccuracy:true, timeout:9000, maximumAge:30000 });
+}
+function useGps(){
+  if(!navigator.geolocation){ toast('This browser will not share a location'); return; }
+  navigator.geolocation.getCurrentPosition(p => {
+    showMe(p.coords.latitude, p.coords.longitude);
+    $('locBtn').classList.add('live');
+    setPlace('from', { name:'Your location', detail:'', lat:me.lat, lon:me.lon });
+  }, err => {
+    toast(err.code === 1
+      ? 'Location is blocked for this site. Allow it in the padlock menu, or click the map to set a start point.'
+      : 'Could not get a GPS fix. Click the map to set a start point instead.', 6000);
+  }, { enableHighAccuracy:true, timeout:9000, maximumAge:20000 });
+}
+function toggleFollow(){
+  following = !following;
+  $('locBtn').classList.toggle('on', following);
+  if(following){
+    if(!navigator.geolocation){ following = false; return; }
+    watch = navigator.geolocation.watchPosition(p => {
+      showMe(p.coords.latitude, p.coords.longitude);
+      $('locBtn').classList.add('live');
+      speed = p.coords.speed != null && p.coords.speed >= 0
+        ? (IMP() ? p.coords.speed * 2.23694 : p.coords.speed * 3.6) : null;
+      advance();
+      map.easeTo({ center:[me.lon, me.lat], duration:650,
+        bearing: (p.coords.heading != null && !isNaN(p.coords.heading)) ? p.coords.heading : map.getBearing() });
+    }, err => {
+      following = false; $('locBtn').classList.remove('on');
+      toast(err.code === 1 ? 'Location is blocked for this site.' : 'Lost the GPS signal.', 5000);
+    }, { enableHighAccuracy:true, maximumAge:2000, timeout:12000 });
+  } else if(watch != null){ navigator.geolocation.clearWatch(watch); watch = null; }
+}
+
+/* ── turn by turn ─────────────────────────────────────────── */
+let nav = null;
+function startNav(it){
+  if(!it || !it.legs[0] || !it.legs[0].steps.length) return;
+  nav = { steps: it.legs[0].steps, i:0, total: it.duration, dist: it.distance };
+  $('nav').hidden = false;
+  $('panel').classList.add('hid');
+  map.easeTo({ pitch:60, zoom:17, duration:900 });
+  if(!following) toggleFollow();
+  paintNav();
+}
+function endNav(){
+  nav = null; $('nav').hidden = true; $('panel').classList.remove('hid');
+  map.easeTo({ pitch:0, duration:700 });
+}
+function paintNav(){
+  if(!nav) return;
+  const s = nav.steps[nav.i];
+  $('navIcon').innerHTML = turnIcon(s.text);
+  $('navInstr').textContent = s.text;
+  $('navMeta').textContent = 'Step ' + (nav.i+1) + ' of ' + nav.steps.length + (s.road ? ' · ' + s.road : '');
+  let d = (me && s.lat != null) ? hav(me, { lat:s.lat, lon:s.lon }) : s.dist;
+  $('navDist').textContent = d != null ? fmtDist(d) : '—';
+  let left = 0;
+  for(let k = nav.i; k < nav.steps.length; k++) left += nav.steps[k].dist || 0;
+  $('navLeft').textContent = fmtDist(left);
+  const secs = nav.dist ? nav.total * (left / nav.dist) : 0;
+  $('navEta').textContent = clock(Date.now() + secs * 1000);
+  $('navSpeed').textContent = (speed != null && following) ? Math.round(speed) + (IMP() ? ' mph' : ' kph') : '—';
+  $('navPrev').disabled = nav.i === 0;
+  $('navNext').disabled = nav.i >= nav.steps.length - 1;
+}
+function navStep(d){
+  if(!nav) return;
+  nav.i = Math.max(0, Math.min(nav.steps.length - 1, nav.i + d));
+  const s = nav.steps[nav.i];
+  if(s.lon != null) map.easeTo({ center:[s.lon, s.lat], zoom:17, pitch:60, duration:650 });
+  paintNav();
+}
+function advance(){
+  if(!nav || !me || !following) return;
+  let near = -1, nd = Infinity;
+  nav.steps.forEach((s, k) => {
+    if(s.lat == null) return;
+    const d = hav(me, { lat:s.lat, lon:s.lon });
+    if(d < nd){ nd = d; near = k; }
+  });
+  if(near >= 0){
+    const target = nd < 40 ? Math.min(near + 1, nav.steps.length - 1) : near;
+    if(target > nav.i) nav.i = target;
+  }
+  paintNav();
+}
+
+/* ── traffic ──────────────────────────────────────────────── */
+const QUOTA = 2500;
+const qKey = () => 'tern.tt.' + new Date().toISOString().slice(0,10);
+const qUsed = () => +(store.get(qKey(), '0')) || 0;
+function qBump(){ const n = qUsed() + 1; store.set(qKey(), String(n)); stamp(); return n; }
 function addTraffic(){
-  if(!TTKEY || map.getSource('flow')) return;
-  const st=theme==='dark'?'relative0-dark':'relative0';
-  map.addSource('flow',{type:'raster',tileSize:256,
-    tiles:['https://api.tomtom.com/traffic/map/4/tile/flow/'+st+'/{z}/{x}/{y}.png?key='+
-      encodeURIComponent(TTKEY)+'&tileSize=256&thickness=4'],
-    attribution:'Traffic &copy; TomTom'});
-  const before = map.getLayer('route-case') ? 'route-case' : firstSymbol();
-  map.addLayer({id:'flow',type:'raster',source:'flow',paint:{'raster-opacity':.85}},before);
+  if(!ttKey || map.getSource('flow')) return;
+  const st = theme === 'dark' ? 'relative0-dark' : 'relative0';
+  map.addSource('flow', { type:'raster', tileSize:256,
+    tiles:['https://api.tomtom.com/traffic/map/4/tile/flow/' + st + '/{z}/{x}/{y}.png?key=' +
+      encodeURIComponent(ttKey) + '&tileSize=256&thickness=4'] });
+  map.addLayer({ id:'flow', type:'raster', source:'flow', paint:{ 'raster-opacity':.85 } },
+    map.getLayer('route-case') ? 'route-case' : firstSymbol());
 }
 function removeTraffic(){
   if(map.getLayer('flow')) map.removeLayer('flow');
   if(map.getSource('flow')) map.removeSource('flow');
 }
-const CAT={0:['Unknown','#8b949f'],1:['Accident','#e8503d'],2:['Fog','#8b949f'],3:['Hazard','#e8a33d'],
-  4:['Rain','#3d8fe8'],5:['Ice','#3dd6e8'],6:['Traffic jam','#e8a33d'],7:['Lane closed','#e8743d'],
-  8:['Road closed','#e8503d'],9:['Road works','#e8a33d'],10:['Wind','#8b949f'],11:['Flooding','#3d8fe8'],
-  14:['Broken down vehicle','#e8743d']};
-const MAG={0:'Unknown',1:'Minor',2:'Moderate',3:'Major',4:'Closure'};
-let incData=null, incTimer=null, incBusy=false, lastInc=0;
-const QUOTA=2500;
-function quotaKey(){ return 'tern.tt.'+new Date().toISOString().slice(0,10); }
-function quotaUsed(){ return +(ls.get(quotaKey(),'0'))||0; }
-function quotaBump(){
-  const n=quotaUsed()+1; ls.set(quotaKey(),String(n));
-  if(n===Math.floor(QUOTA*0.8)) toast('TomTom free tier: '+n+' of '+QUOTA+' requests used today',6000);
-  if(n===QUOTA) toast('TomTom free tier used up for today. Traffic will resume tomorrow.',7000);
-  stamp(); return n;
-}
-
-function bboxKm2(b){
-  const dLat=(b.getNorth()-b.getSouth())*111.32;
-  const dLon=(b.getEast()-b.getWest())*111.32*Math.cos((b.getNorth()+b.getSouth())/2*Math.PI/180);
-  return Math.abs(dLat*dLon);
-}
-async function loadIncidents(quiet){
-  if(!TTKEY||!trafficOn||incBusy) return;
-  if(document.hidden) return;                       // do not burn quota in a background tab
-  if(quotaUsed()>=QUOTA){ if(!quiet) toast('TomTom free tier used up for today'); return; }
-  if(!navigator.onLine){ if(!quiet) toast('You are offline'); return; }
-  if(map.getZoom()<9){ if(!quiet) toast('Zoom in to load live incidents'); return; }
-  const b=map.getBounds();
-  if(bboxKm2(b)>9000){ if(!quiet) toast('Zoom in a little, the area is too large for the incident feed'); return; }
-  incBusy=true;
-  const fields='{incidents{type,geometry{type,coordinates},properties{iconCategory,magnitudeOfDelay,'+
-    'events{description,code},startTime,endTime,from,to,length,delay,roadNumbers}}}';
-  const url='https://api.tomtom.com/traffic/services/5/incidentDetails?key='+encodeURIComponent(TTKEY)+
-    '&bbox='+[b.getWest(),b.getSouth(),b.getEast(),b.getNorth()].map(v=>v.toFixed(6)).join(',')+
-    '&fields='+fields+'&language=en-GB&timeValidityFilter=present';
-  try{
-    quotaBump();
-    const j=await NET.json(url,null,{tries:1,ms:12000,label:'Traffic'});
-    const feats=(j.incidents||[]).filter(Boolean).map(f=>{
-      const p=f.properties||{}, cat=CAT[p.iconCategory]||CAT[0];
-      return {type:'Feature',geometry:f.geometry,properties:{
-        col:cat[1], cat:cat[0], mag:MAG[p.magnitudeOfDelay]||'Unknown',
-        desc:(p.events&&p.events[0]&&p.events[0].description)||cat[0],
-        from:p.from||'', to:p.to||'', delay:p.delay||0, len:p.length||0,
-        road:(p.roadNumbers||[]).join(', '), end:p.endTime||''}};
-    });
-    incData={type:'FeatureCollection',features:feats};
-    if(map.getSource('inc')) map.getSource('inc').setData(incData);
-    lastInc=Date.now(); stamp();
-    if(!quiet) toast(feats.length? feats.length+' live incidents in view' : 'No incidents reported in view');
-  }catch(e){ if(!quiet) toast(esc(e.message),5000); console.warn(e); }
-  finally{ incBusy=false; }
-}
 function stamp(){
-  const el=$('upd'); if(!el) return;
-  const bits=[];
-  if(lastInc) bits.push('traffic '+new Date(lastInc).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));
-  if(TTKEY) bits.push(quotaUsed()+'/'+QUOTA+' today');
-  if(!navigator.onLine) bits.push('OFFLINE');
-  el.innerHTML=bits.map(b=>b==='OFFLINE'?'<b>OFFLINE</b>':b).join('  \u00b7  ');
-}
-function showIncident(f){
-  const p=f.properties;
-  $('card').classList.add('on');
-  $('cardb').innerHTML='<div class="kick">'+esc(p.cat)+' &middot; '+esc(p.mag)+'</div>'+
-    '<h2>'+esc(p.desc)+'</h2>'+
-    (p.from||p.to? '<div class="sub">'+esc(p.from)+(p.to?' to '+esc(p.to):'')+'</div>':'')+
-    '<table class="kv">'+
-    (p.road?'<tr><td>Road</td><td>'+esc(p.road)+'</td></tr>':'')+
-    (p.delay?'<tr><td>Delay</td><td>'+fmtT(p.delay)+'</td></tr>':'')+
-    (p.len?'<tr><td>Length affected</td><td>'+fmtD(p.len)+'</td></tr>':'')+
-    (p.end?'<tr><td>Expected clear</td><td>'+esc(new Date(p.end).toLocaleString())+'</td></tr>':'')+
-    '</table>';
-}
-let incDeb;
-map.on('moveend',()=>{ clearTimeout(incDeb); incDeb=setTimeout(()=>loadIncidents(true),700); });
-incTimer=setInterval(()=>loadIncidents(true),60000);
-document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&trafficOn) loadIncidents(true); });
-addEventListener('offline',()=>{ stamp(); toast('You went offline. Tiles, search and routing will fail until you are back.',6000); });
-addEventListener('online',()=>{ stamp(); toast('Back online',2500); if(trafficOn) loadIncidents(true); });
-addEventListener('beforeunload',()=>{
-  if(watchId!=null&&navigator.geolocation) navigator.geolocation.clearWatch(watchId);
-  if(incTimer) clearInterval(incTimer);
-});
-
-/* ---------------- search ---------------- */
-let hits=[], hsel=-1, sdeb, sabort;
-$('q').addEventListener('input',()=>{
-  $('qx').hidden=!$('q').value;
-  clearTimeout(sdeb);
-  const v=$('q').value.trim();
-  if(v.length<2){ $('hits').classList.remove('on'); hits=[]; return; }
-  sdeb=setTimeout(()=>geocode(v),250);
-});
-$('qx').onclick=()=>{ $('q').value=''; $('qx').hidden=true; $('hits').classList.remove('on'); $('q').focus(); };
-async function geocode(v){
-  const c=map.getCenter();
-  if(sabort) sabort.abort();
-  sabort=new AbortController();
-  try{
-    const u='https://photon.komoot.io/api?q='+encodeURIComponent(v)+'&limit=7&lang=en&lat='+
-      c.lat.toFixed(4)+'&lon='+c.lng.toFixed(4);
-    const j=await NET.json(u,{signal:sabort.signal},{tries:1,ms:8000,label:'Search'});
-    hits=(j.features||[]).map(f=>{
-      const p=f.properties;
-      return {name:p.name||p.street||'Unnamed',
-        detail:[p.housenumber&&p.street?p.housenumber+' '+p.street:p.street,p.city||p.county,p.state,p.country]
-          .filter(Boolean).join(', '),
-        lon:f.geometry.coordinates[0], lat:f.geometry.coordinates[1]};
-    });
-    hsel=-1; paintHits();
-  }catch(e){
-    if(e.name==='AbortError') return;
-    $('hits').innerHTML='<div class="msg">Search is unreachable. Check the connection.</div>';
-    $('hits').classList.add('on');
-  }
-}
-function paintHits(){
-  const h=$('hits');
-  if(!hits.length){ h.innerHTML='<div class="msg">No matches.</div>'; h.classList.add('on'); return; }
-  h.innerHTML=hits.map((r,i)=>'<div class="h'+(i===hsel?' sel':'')+'" data-i="'+i+'">'+
-    '<div class="d"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 22s7-6.3 7-12a7 7 0 10-14 0c0 5.7 7 12 7 12z"/><circle cx="12" cy="10" r="2.4"/></svg></div>'+
-    '<div class="tx"><div class="a">'+esc(r.name)+'</div><div class="b">'+esc(r.detail)+'</div></div></div>').join('');
-  h.classList.add('on');
-  [...h.children].forEach(el=>{ if(el.dataset.i!==undefined) el.onclick=()=>pick(hits[+el.dataset.i]); });
-}
-$('q').addEventListener('keydown',e=>{
-  if(e.key==='Escape'){ $('hits').classList.remove('on'); $('q').blur(); return; }
-  if(!hits.length) return;
-  if(e.key==='ArrowDown'){ e.preventDefault(); hsel=Math.min(hits.length-1,hsel+1); paintHits(); }
-  else if(e.key==='ArrowUp'){ e.preventDefault(); hsel=Math.max(0,hsel-1); paintHits(); }
-  else if(e.key==='Enter'){ e.preventDefault(); pick(hits[hsel<0?0:hsel]); }
-});
-
-/* ---------------- destination ---------------- */
-let dest=null, destMk=null;
-function pinEl(){ const d=document.createElement('div'); d.className='mk';
-  d.innerHTML='<svg viewBox="0 0 26 34"><path d="M13 33S25 21 25 12.5A12 12 0 101 12.5C1 21 13 33 13 33z" fill="#6d5efc"/><circle cx="13" cy="12.5" r="4.4" fill="#fff"/></svg>';
-  return d; }
-function pick(r){
-  if(!r) return;
-  $('hits').classList.remove('on'); $('q').value=r.name; $('q').blur();
-  setDest({name:r.name,detail:r.detail,lon:r.lon,lat:r.lat});
-}
-function setDest(p){
-  if(!p||!isFinite(p.lat)||!isFinite(p.lon)||Math.abs(p.lat)>90||Math.abs(p.lon)>180){
-    toast('That place has no usable coordinates'); return; }
-  dest=p;
-  ls.set('tern.dest',JSON.stringify(p));
-  if(destMk) destMk.remove();
-  destMk=new maplibregl.Marker({element:pinEl(),anchor:'bottom'}).setLngLat([p.lon,p.lat]).addTo(map);
-  map.flyTo({center:[p.lon,p.lat],zoom:Math.max(map.getZoom(),15),speed:1.4,essential:true});
-  showPlace();
-}
-function wireMapClicks(){
-  map.on('click',e=>{
-    const f=map.queryRenderedFeatures(e.point,{layers:['inc-line','inc-pt','route-line','route-case','route-glow']
-      .filter(id=>map.getLayer(id))});
-    if(f.length) return;
-    dropPin(e.lngLat.lng,e.lngLat.lat);
-  });
-}
-async function dropPin(lon,lat){
-  setDest({name:'Dropped pin',detail:lat.toFixed(5)+', '+lon.toFixed(5),lon,lat});
-  try{
-    const j=await NET.json('https://photon.komoot.io/reverse?lat='+lat+'&lon='+lon+'&limit=1&lang=en',
-      null,{tries:1,ms:8000,label:'Address lookup'});
-    const f=(j.features||[])[0];
-    if(f&&dest){
-      const p=f.properties;
-      dest.name=p.name||[p.housenumber,p.street].filter(Boolean).join(' ')||'Dropped pin';
-      dest.detail=[p.street&&p.housenumber?p.housenumber+' '+p.street:p.street,p.city||p.county,p.state,p.postcode]
-        .filter(Boolean).join(', ')||(lat.toFixed(5)+', '+lon.toFixed(5));
-      if($('card').classList.contains('on')&&!routeGeo) showPlace();
-    }
-  }catch(e){}
-}
-function showPlace(){
-  if(!dest) return;
-  $('card').classList.add('on');
-  $('cardb').innerHTML='<div class="kick">Destination</div><h2>'+esc(dest.name)+'</h2>'+
-    '<div class="sub">'+esc(dest.detail)+'</div>'+
-    '<div class="row"><button class="btn go" id="godir">Directions</button>'+
-    '<button class="btn sq" id="gohere" title="Start routes from this point">'+
-    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/></svg></button>'+
-    '<button class="btn sq" id="gocopy" title="Copy coordinates">'+
-    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 5H6a2 2 0 00-2 2v9"/></svg></button></div>';
-  $('godir').onclick=()=>route();
-  $('gohere').onclick=()=>{
-    manualMe=true; setMe(dest.lat,dest.lon); setGps('manual');
-    toast('Routes now start from this point. Search a destination next.',4500);
-  };
-  $('gocopy').onclick=async()=>{
-    const t=dest.lat.toFixed(6)+', '+dest.lon.toFixed(6);
-    try{ await navigator.clipboard.writeText(t); toast('Coordinates copied'); }catch(e){ toast(t,6000); }
-  };
+  $('trafficStamp').textContent = (trafficOn && ttKey) ? qUsed() + '/' + QUOTA + ' traffic calls today' : '';
 }
 
-/* ---------------- gps ---------------- */
-let me=null, meMk=null, watchId=null, follow=false, manualMe=false;
-let gpsState='idle';
-function setGps(st,msg){
-  gpsState=st;
-  const chip=$('gpschip'); if(!chip) return;
-  const label={idle:'GPS OFF',waiting:'GPS SEARCHING',live:'GPS LIVE',
-    manual:'START SET BY HAND',denied:'GPS BLOCKED',unsupported:'GPS UNAVAILABLE'}[st]||st;
-  chip.textContent=label+(msg?' \u00b7 '+msg:'');
-  chip.className='chip '+(st==='live'?'ok':st==='waiting'?'wait':st==='manual'?'man':
-    (st==='denied'||st==='unsupported')?'no':'');
-  $('loc').classList.toggle('live',st==='live');
-}
-function locate(quiet){
-  if(!navigator.geolocation){ setGps('unsupported'); if(!quiet) toast('This browser will not share a location'); return; }
-  setGps('waiting');
-  navigator.geolocation.getCurrentPosition(p=>{
-    manualMe=false;
-    setMe(p.coords.latitude,p.coords.longitude,p.coords.speed);
-    setGps('live');
-    if(!dest) map.flyTo({center:[me.lon,me.lat],zoom:14.5,speed:1.3,essential:true});
-  },err=>{
-    setGps(err.code===1?'denied':'idle', err.code===1?'allow it, or click the map':'no fix');
-    if(!quiet) toast(err.code===1
-      ? 'Location was blocked. Click anywhere on the map and choose START FROM HERE instead.'
-      : 'No location fix. Click the map and choose START FROM HERE instead.',6000);
-  },{enableHighAccuracy:true,timeout:9000,maximumAge:20000});
-}
-let spd=null;
-function setMe(lat,lon,speed){
-  me={lat,lon};
-  if(speed!=null&&speed>=0) spd = IMP ? speed*2.23694 : speed*3.6;
-  advanceNav();
-  if(!meMk){ const d=document.createElement('div'); d.className='gps';
-    meMk=new maplibregl.Marker({element:d}).setLngLat([lon,lat]).addTo(map); }
-  else meMk.setLngLat([lon,lat]);
-}
-function toggleFollow(){
-  follow=!follow;
-  $('loc').classList.toggle('on',follow);
-  if(follow){
-    if(!navigator.geolocation){ setGps('unsupported'); toast('This browser will not share a location');
-      follow=false; $('loc').classList.remove('on'); return; }
-    setGps('waiting');
-    watchId=navigator.geolocation.watchPosition(p=>{
-      manualMe=false; setGps('live');
-      setMe(p.coords.latitude,p.coords.longitude,p.coords.speed);
-      map.easeTo({center:[me.lon,me.lat],duration:600,essential:true,
-        bearing:(p.coords.heading!=null&&!isNaN(p.coords.heading))?p.coords.heading:map.getBearing()});
-    },err=>{ setGps(err.code===1?'denied':'idle', err.code===1?'allow it, or click the map':'signal lost');
-      toast(err.code===1
-        ? 'Location blocked by the browser. Click the map and choose START FROM HERE.'
-        : 'Lost the GPS signal.',5000);
-      follow=false; $('loc').classList.remove('on');
-      if(watchId!=null) navigator.geolocation.clearWatch(watchId);
-    },{enableHighAccuracy:true,maximumAge:2000,timeout:12000});
-    toast('Following your position');
-  }else{
-    if(watchId!=null) navigator.geolocation.clearWatch(watchId);
-    watchId=null; locate(false);
-  }
-}
-
-/* ---------------- routing ---------------- */
-let routeGeo=null, routeInfo=null;
-function setRoute(geo){
-  routeGeo=geo;
-  const s=map.getSource('route');
-  if(s) s.setData({type:'Feature',geometry:geo,properties:{}});
-}
-function clearRoute(){
-  navSt=null;
-  $('hud').classList.remove('on');
-  $('find').style.display='';
-  routeGeo=null; routeInfo=null;
-  const s=map.getSource('route'); if(s) s.setData(fc());
-}
-
-function dec6(str){
-  let i=0,lat=0,lon=0,out=[];
-  while(i<str.length){
-    let b,sh=0,res=0;
-    do{ b=str.charCodeAt(i++)-63; res|=(b&0x1f)<<sh; sh+=5; }while(b>=0x20);
-    lat+=(res&1)?~(res>>1):(res>>1);
-    sh=0;res=0;
-    do{ b=str.charCodeAt(i++)-63; res|=(b&0x1f)<<sh; sh+=5; }while(b>=0x20);
-    lon+=(res&1)?~(res>>1):(res>>1);
-    out.push([lon/1e6,lat/1e6]);
-  }
-  return out;
-}
-function osrmText(s){
-  const m=s.maneuver||{}, mod=(m.modifier||'').replace(/_/g,' '), on=s.name?' onto '+s.name:'';
-  const dir=b=>['north','northeast','east','southeast','south','southwest','west','northwest']
-    [Math.round(((b||0)%360)/45)%8];
-  switch(m.type){
-    case 'depart': return 'Head '+dir(m.bearing_after)+(s.name?' on '+s.name:'');
-    case 'arrive': return 'Arrive at your destination';
-    case 'turn': return 'Turn '+mod+on;
-    case 'new name': return 'Continue'+(s.name?' on '+s.name:'');
-    case 'merge': return 'Merge '+mod+on;
-    case 'on ramp': return 'Take the ramp '+mod+on;
-    case 'off ramp': return 'Take the exit '+mod+on;
-    case 'fork': return 'Keep '+mod+on;
-    case 'roundabout': case 'rotary': return 'Enter the roundabout'+(m.exit?' and take exit '+m.exit:'');
-    case 'end of road': return 'At the end of the road, turn '+mod+on;
-    case 'continue': return 'Continue '+mod+on;
-    default: return (m.type?m.type.charAt(0).toUpperCase()+m.type.slice(1):'Continue')+(mod?' '+mod:'')+on;
-  }
-}
-async function osrm(a,b){
-  const u='https://router.project-osrm.org/route/v1/driving/'+a.lon+','+a.lat+';'+b.lon+','+b.lat+
-    '?overview=full&geometries=geojson&steps=true';
-  const j=await NET.json(u,null,{tries:2,ms:15000,label:'Router'});
-  const rt=(j.routes||[])[0];
-  if(!rt) throw new Error('No driving route found between those points');
-  const steps=[];
-  rt.legs.forEach(l=>l.steps.forEach(s=>{
-    const m=s.maneuver||{};
-    steps.push({text:osrmText(s),dist:s.distance,road:s.name||'',
-      lon:m.location?m.location[0]:null, lat:m.location?m.location[1]:null, mod:(m.modifier||'')});
-  }));
-  return {dist:rt.distance,time:rt.duration,geo:rt.geometry,steps,src:'OSRM'};
-}
-async function valhalla(a,b,costing){
-  const body={locations:[{lat:a.lat,lon:a.lon},{lat:b.lat,lon:b.lon}],costing,
-    directions_options:{units:IMP?'miles':'kilometers',language:'en-US'}};
-  const j=await NET.json('https://valhalla1.openstreetmap.de/route',
-    {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},
-    {tries:2,ms:20000,label:'Backup router'});
-  const t=j.trip;
-  if(!t||!t.legs) throw new Error('No route found for that mode');
-  let coords=[], steps=[];
-  const unit=IMP?1609.34:1000;
-  t.legs.forEach(l=>{
-    const shp=dec6(l.shape), base=coords.length;
-    coords=coords.concat(shp);
-    (l.maneuvers||[]).forEach(m=>{
-      const pt=shp[Math.min(shp.length-1,m.begin_shape_index||0)]||null;
-      steps.push({text:m.instruction,dist:(m.length||0)*unit,
-        road:(m.street_names||[]).join(', '),
-        lon:pt?pt[0]:null, lat:pt?pt[1]:null, mod:''});
-    });
-  });
-  return {dist:t.summary.length*unit,time:t.summary.time,
-    geo:{type:'LineString',coordinates:coords},steps,src:'Valhalla'};
-}
-async function route(){
-  if(!dest){ toast('Pick a destination first'); return; }
-  const from=me||{lat:map.getCenter().lat,lon:map.getCenter().lng};
-  if(!me) toast('No GPS fix yet, routing from the centre of the map',4000);
-  $('card').classList.add('on');
-  $('cardb').innerHTML='<div class="kick">Route</div><h2>'+esc(dest.name)+'</h2>'+
-    '<div class="sub" style="margin-top:8px"><span class="pulse" style="display:inline-block"></span> Calculating</div>';
-  try{
-    let r;
-    if(mode==='drive'){
-      try{ r=await osrm(from,dest); }
-      catch(e1){
-        console.warn('primary router failed:',e1.message);
-        toast('Primary router unreachable, using the backup',3500);
-        r=await valhalla(from,dest,'auto');
-      }
-    } else {
-      r=await valhalla(from,dest, mode==='walk'?'pedestrian':'bicycle');
-    }
-    routeInfo=r; setRoute(r.geo); fitRoute(r.geo); showRoute(r);
-  }catch(e){
-    $('cardb').innerHTML='<div class="kick">Route</div><h2>'+esc(dest.name)+'</h2>'+
-      '<div class="sub" style="color:var(--bad);margin-top:8px">'+esc(e.message)+'</div>'+modes();
-    wireModes();
-  }
-}
-function fitRoute(geo){
-  const c=geo.coordinates; if(!c||!c.length) return;
-  let a=180,b=90,d=-180,f=-90;
-  for(const p of c){ a=Math.min(a,p[0]); d=Math.max(d,p[0]); b=Math.min(b,p[1]); f=Math.max(f,p[1]); }
-  const wide=innerWidth>=760;
-  map.fitBounds([[a,b],[d,f]],{duration:850,pitch:0,
-    padding:{top:90,right:70,bottom:wide?70:Math.round(innerHeight*.45),left:wide?400:40}});
-}
-function modes(){
-  return '<div class="modes">'+
-    [['drive','Drive'],['walk','Walk'],['bike','Bike']].map(([k,l])=>
-      '<div class="mode'+(k===mode?' on':'')+'" data-m="'+k+'">'+l+'</div>').join('')+
-    '<div class="mode" data-u="1">'+(IMP?'mi':'km')+'</div></div>';
-}
-function wireModes(){
-  $('cardb').querySelectorAll('[data-m]').forEach(el=>el.onclick=()=>{
-    mode=el.dataset.m; ls.set('tern.mode',mode); route(); });
-  const u=$('cardb').querySelector('[data-u]');
-  if(u) u.onclick=()=>{ IMP=!IMP; ls.set('tern.units',IMP?'mi':'km'); if(routeInfo) route(); };
-}
-const ARROW={left:'<path d="M9 5L4 10l5 5"/><path d="M4 10h10a6 6 0 016 6v3"/>',
-  right:'<path d="M15 5l5 5-5 5"/><path d="M20 10H10a6 6 0 00-6 6v3"/>',
-  straight:'<path d="M12 21V5"/><path d="M6 11l6-6 6 6"/>',
-  dest:'<path d="M12 22s7-6.3 7-12a7 7 0 10-14 0c0 5.7 7 12 7 12z"/><circle cx="12" cy="10" r="2"/>'};
-function arrow(t){
-  const a=(t||'').toLowerCase();
-  const k = a.includes('arrive')||a.includes('destination') ? 'dest'
-          : a.includes('left') ? 'left' : a.includes('right') ? 'right' : 'straight';
-  return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'+ARROW[k]+'</svg>';
-}
-function showRoute(r){
-  $('card').classList.add('on');
-  $('cardb').innerHTML='<div class="kick">Route &middot; '+esc(r.src)+'</div>'+
-    '<div class="big"><div class="v num">'+fmtT(r.time)+'</div><div class="u num">'+fmtD(r.dist)+'</div>'+
-    '<div class="sep">/</div><div class="u">'+esc(dest.name)+'</div></div>'+
-    modes()+
-    '<div class="row"><button class="btn go" id="start">Start</button>'+
-    '<button class="btn sq" id="rx" title="Clear route">'+
-    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>'+
-    '<div class="steps">'+r.steps.map((s,i)=>'<div class="st" data-i="'+i+'">'+
-      '<div class="i">'+arrow(s.text)+'</div><div><div class="a">'+esc(s.text)+'</div>'+
-      '<div class="b">'+(s.dist?fmtD(s.dist):'')+(s.road?' &middot; '+esc(s.road):'')+'</div></div></div>').join('')+
-    '</div>';
-  wireModes();
-  $('rx').onclick=()=>{ clearRoute(); showPlace(); };
-  $('start').onclick=()=>startNav(r);
-  $('cardb').querySelectorAll('.st').forEach(el=>el.onclick=()=>{
-    const s=r.steps[+el.dataset.i];
-    if(s.lon!=null) map.flyTo({center:[s.lon,s.lat],zoom:17,speed:1.5});
-  });
-}
-let navSt=null;
-function startNav(r){
-  navSt={r,i:0};
-  $('card').classList.remove('on');
-  $('find').style.display='none';
-  $('hud').classList.add('on');
-  paintHud();
-  map.easeTo({pitch:62,zoom:17,duration:950});
-  if(!follow && !manualMe) toggleFollow();
-}
-function hudStep(d){
-  if(!navSt) return;
-  const r=navSt.r;
-  navSt.i=Math.max(0,Math.min(r.steps.length-1,navSt.i+d));
-  const s=r.steps[navSt.i];
-  if(s.lon!=null) map.easeTo({center:[s.lon,s.lat],zoom:17,pitch:62,duration:650});
-  paintHud();
-}
-function exitNav(){
-  navSt=null;
-  $('hud').classList.remove('on');
-  $('find').style.display='';
-  map.easeTo({pitch:52,duration:700});
-  if(routeInfo) showRoute(routeInfo);
-}
-function paintHud(){
-  if(!navSt) return;
-  const {r,i}=navSt, s=r.steps[i];
-  $('hudmi').innerHTML=arrow(s.text);
-  $('hudi').textContent=s.text;
-  $('hudr').textContent='Step '+(i+1)+' of '+r.steps.length+(s.road?' \u00b7 '+s.road:'');
-  let d=null;
-  if(me&&s.lat!=null) d=hav(me,{lat:s.lat,lon:s.lon});
-  else if(s.dist) d=s.dist;
-  $('hudd').textContent = d!=null? fmtD(d) : '--';
-  let remD=0;
-  for(let k=i;k<r.steps.length;k++) remD+=r.steps[k].dist||0;
-  const remT = r.dist? r.time*(remD/r.dist) : 0;
-  $('hudrem').textContent=fmtD(remD);
-  $('hudeta').textContent=new Date(Date.now()+remT*1000)
-    .toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-  $('hudsp').textContent = (spd!=null&&gpsState==='live')? Math.round(spd)+(IMP?' mph':' kph') : '--';
-  $('hudprev').disabled = navSt.i===0;
-  $('hudnext').disabled = navSt.i>=r.steps.length-1;
-}
-function advanceNav(){
-  if(!navSt||!me||gpsState!=='live') return;
-  const r=navSt.r;
-  let near=-1, nd=Infinity;
-  for(let k=0;k<r.steps.length;k++){
-    const st=r.steps[k]; if(st.lat==null) continue;
-    const d=hav(me,{lat:st.lat,lon:st.lon});
-    if(d<nd){ nd=d; near=k; }
-  }
-  if(near>=0){
-    // within 40 m of a maneuver means it is done, so aim at the next one
-    const target = nd<40 ? Math.min(near+1, r.steps.length-1) : near;
-    if(target>navSt.i) navSt.i=target;   // never step backwards
-  }
-  paintHud();
-}
-
-/* ---------------- diagnostics ---------------- */
-const isFile = location.protocol==='file:';
-const SVC=[
- {id:'sv-tile',n:'Map tiles',run:async()=>{
-   const r=await fetch(OFM+'/styles/dark'); if(!r.ok) throw new Error('HTTP '+r.status);
-   await r.json(); return 'OpenFreeMap reachable'; }},
- {id:'sv-geo',n:'Search',run:async()=>{
-   const r=await fetch('https://photon.komoot.io/api?q=charlotte&limit=1&lang=en');
-   if(!r.ok) throw new Error('HTTP '+r.status);
-   const j=await r.json(); return (j.features||[]).length+' result from Photon'; }},
- {id:'sv-rt1',n:'Router (OSRM)',run:async()=>{
-   const r=await fetch('https://router.project-osrm.org/route/v1/driving/'+
-     '-80.8431,35.2271;-80.8456,35.1924?overview=false');
-   if(!r.ok) throw new Error('HTTP '+r.status);
-   const j=await r.json(); if(j.code!=='Ok') throw new Error('returned '+j.code);
-   return 'route in '+fmtT(j.routes[0].duration); }},
- {id:'sv-rt2',n:'Router backup',run:async()=>{
-   const r=await fetch('https://valhalla1.openstreetmap.de/status');
-   if(!r.ok) throw new Error('HTTP '+r.status);
-   const j=await r.json(); return 'Valhalla '+(j.version||'ok'); }},
- {id:'sv-traf',n:'Live traffic',run:async()=>{
-   if(!TTKEY) throw new Error('no TomTom key saved yet');
-   const r=await fetch('https://api.tomtom.com/traffic/services/5/incidentDetails?key='+
-     encodeURIComponent(TTKEY)+'&bbox=-80.90,35.18,-80.78,35.28&fields={incidents{type}}'+
-     '&language=en-GB&timeValidityFilter=present');
-   if(r.status===403) throw new Error('key rejected (403). Check it, and that Traffic is enabled on it.');
-   if(!r.ok) throw new Error('HTTP '+r.status);
-   const j=await r.json(); return ((j.incidents||[]).length)+' incidents near Charlotte'; }},
- {id:'sv-gps',n:'GPS',run:()=>new Promise((ok,no)=>{
-   if(!navigator.geolocation) return no(new Error('not supported by this browser'));
-   navigator.geolocation.getCurrentPosition(
-     p=>ok('fix at '+p.coords.latitude.toFixed(4)+', '+p.coords.longitude.toFixed(4)),
-     e=>no(new Error(e.code===1?'permission denied by the browser':e.message)),
-     {timeout:9000,maximumAge:30000});
- })}
+/* ── system check ─────────────────────────────────────────── */
+const SERVICES = [
+  { id:'tiles', run: async () => { const j = await NET.json(OFM + '/styles/liberty', null, { tries:0, ms:9000, label:'Tiles' });
+      return 'OpenFreeMap reachable, ' + ((j.layers||[]).length) + ' style layers'; } },
+  { id:'geo', run: async () => { const r = await geocode('charlotte'); return r.length + ' results from Photon'; } },
+  { id:'drive', run: async () => {
+      const j = await NET.json('https://router.project-osrm.org/route/v1/driving/-80.8431,35.2271;-80.8456,35.1924?overview=false',
+        null, { tries:0, ms:12000, label:'OSRM' });
+      if(j.code !== 'Ok') throw new Error('OSRM said ' + j.code);
+      return 'route in ' + fmtDur(j.routes[0].duration); } },
+  { id:'walkbike', run: async () => {
+      const j = await NET.json('https://valhalla1.openstreetmap.de/status', null, { tries:0, ms:12000, label:'Valhalla' });
+      return 'Valhalla ' + (j.version || 'ok'); } },
+  { id:'transit', run: async () => {
+      const url = MOTIS + '/api/v5/plan?fromPlace=35.2271,-80.8431&toPlace=35.1924,-80.8456&time=' +
+        encodeURIComponent(new Date().toISOString()) + '&numItineraries=1';
+      const j = await NET.json(url, null, { tries:0, ms:15000, label:'Transitous' });
+      const n = (j.itineraries || []).length;
+      return n ? n + ' itinerar' + (n===1?'y':'ies') + ' found, feed covers this area' : 'reachable, but no transit feed covers this area'; } },
+  { id:'traffic', run: async () => {
+      if(!ttKey) throw new Error('SOFT:no TomTom key saved yet');
+      const u = 'https://api.tomtom.com/traffic/services/5/incidentDetails?key=' + encodeURIComponent(ttKey) +
+        '&bbox=-80.90,35.18,-80.78,35.28&fields={incidents{type}}&language=en-GB&timeValidityFilter=present';
+      const j = await NET.json(u, null, { tries:0, ms:12000, label:'TomTom' });
+      return ((j.incidents || []).length) + ' incidents near Charlotte'; } },
+  { id:'gps', run: () => new Promise((ok, no) => {
+      if(!navigator.geolocation) return no(new Error('not supported here'));
+      navigator.geolocation.getCurrentPosition(
+        p => ok('fix at ' + p.coords.latitude.toFixed(4) + ', ' + p.coords.longitude.toFixed(4)),
+        e => no(new Error(e.code === 1 ? 'SOFT:permission not granted for this site' : e.message)),
+        { timeout:9000, maximumAge:30000 });
+    }) }
 ];
-let diagFails=0;
-async function selftest(){
-  diagFails=0;
-  for(const sv of SVC){
-    const row=$(sv.id); if(!row) continue;
-    row.querySelector('.sd').className='sd wait';
-    row.querySelector('.se').textContent='testing';
-  }
-  await Promise.all(SVC.map(async sv=>{
-    const row=$(sv.id); if(!row) return;
-    try{ const msg=await sv.run();
-      row.querySelector('.sd').className='sd ok';
-      row.querySelector('.se').textContent=msg;
+async function systemCheck(){
+  let bad = 0;
+  const row = id => $('svcList').querySelector('[data-svc="' + id + '"]');
+  SERVICES.forEach(s => { const r = row(s.id); if(r){ r.querySelector('i').className = 'wait'; r.querySelector('span').textContent = 'testing'; } });
+  await Promise.all(SERVICES.map(async s => {
+    const r = row(s.id); if(!r) return;
+    try{
+      const msg = await s.run();
+      r.querySelector('i').className = 'ok';
+      r.querySelector('span').textContent = msg;
     }catch(e){
-      const soft = sv.id==='sv-traf' && /no TomTom key/.test(e.message);
-      row.querySelector('.sd').className='sd '+(soft?'':'no');
-      row.querySelector('.se').textContent=e.message;
-      if(!soft) diagFails++;
+      const soft = /^SOFT:/.test(e.message);
+      r.querySelector('i').className = soft ? '' : 'no';
+      r.querySelector('span').textContent = e.message.replace(/^SOFT:/, '');
+      if(!soft) bad++;
     }
   }));
-  $('fix').style.display = (diagFails&&isFile)?'block':'none';
-  const b=$('diagdot'); if(b) b.style.display=diagFails?'block':'none';
-  return diagFails;
+  $('diagPip').hidden = bad === 0;
+  return bad;
 }
 
-/* ---------------- chrome ---------------- */
-$('cardx').onclick=()=>$('card').classList.remove('on');
-$('loc').onclick=()=>toggleFollow();
-$('tilt').onclick=()=>{ const on=map.getPitch()<20;
-  $('tilt').classList.toggle('on',on); map.easeTo({pitch:on?58:0,duration:650}); };
-$('theme').onclick=()=>{
-  theme = theme==='dark'?'light':'dark';
-  ls.set('tern.theme',theme);
-  document.documentElement.setAttribute('data-t',theme);
-  const hadFlow=!!map.getSource('flow');
-  map.setStyle(STYLES[theme]);
-  map.once('styledata',()=>{ if(!hadFlow) removeTraffic(); addOverlays(); });
+/* ── wiring ───────────────────────────────────────────────── */
+bindField('from'); bindField('to');
+$('clearTo').onclick = () => { $('toInput').value=''; $('clearTo').hidden = true; trip.to = null;
+  if(markTo){ markTo.remove(); markTo = null; } paintRoute(null); $('results').innerHTML=''; hideSug(); };
+$('useGps').onclick = useGps;
+$('swapBtn').onclick = () => {
+  const a = trip.from, b = trip.to;
+  if(!a && !b) return;
+  trip.from = null; trip.to = null;
+  if(markFrom){ markFrom.remove(); markFrom = null; }
+  if(markTo){ markTo.remove(); markTo = null; }
+  $('fromInput').value = ''; $('toInput').value = '';
+  if(b) setPlace('from', b);
+  if(a) setPlace('to', a);
 };
-$('traf').onclick=()=>{
-  if(!TTKEY){ $('diag').classList.add('on'); selftest(); toast('Add a free TomTom key to switch traffic on',4500); return; }
-  trafficOn=!trafficOn; ls.set('tern.traffic',trafficOn?'1':'0');
-  $('traf').classList.toggle('on',trafficOn);
-  if(trafficOn){ addTraffic(); loadIncidents(false); }
-  else { removeTraffic(); incData=null;
-    if(map.getSource('inc')) map.getSource('inc').setData(fc()); lastInc=0; stamp(); }
+document.querySelectorAll('.mode').forEach(el => el.addEventListener('click', async () => {
+  mode = el.dataset.mode; store.set('tern.mode', mode);
+  document.querySelectorAll('.mode').forEach(x => x.classList.toggle('on', x === el));
+  if(!trip.from || !trip.to){ $('results').innerHTML = ''; return; }
+  $('results').innerHTML = '<div class="note">Finding routes…</div>';
+  try{
+    options = await planMode(mode);
+    current = options[0];
+    renderOptions(); paintRoute(current); fitRoute(current);
+  }catch(e){ options = []; current = null; paintRoute(null); renderError(mode, e); }
+}));
+document.querySelector('.mode[data-mode="' + mode + '"]').classList.add('on');
+
+$('panelToggle').onclick = () => $('panel').classList.toggle('hid');
+$('themeBtn').onclick = () => {
+  theme = theme === 'light' ? 'dark' : 'light';
+  store.set('tern.theme', theme);
+  document.documentElement.setAttribute('data-theme', theme);
+  const had = !!map.getSource('flow');
+  map.setStyle(STYLE[theme]);
+  map.once('styledata', () => { if(!had) removeTraffic(); addLayers(); });
 };
-$('gear').onclick=()=>{ $('diag').classList.add('on'); selftest(); };
-$('diag').onclick=e=>{ if(e.target===$('diag')) $('diag').classList.remove('on'); };
-$('diagx').onclick=()=>$('diag').classList.remove('on');
-$('retest').onclick=()=>selftest();
-$('hudx').onclick=()=>exitNav();
-$('hudprev').onclick=()=>hudStep(-1);
-$('hudnext').onclick=()=>hudStep(1);
-addEventListener('keydown',e=>{
-  if(!navSt||e.target===$('q')) return;
-  if(e.key==='ArrowRight'||e.key===' '){ e.preventDefault(); hudStep(1); }
-  if(e.key==='ArrowLeft'){ e.preventDefault(); hudStep(-1); }
-});
-$('keysave').onclick=()=>{
-  TTKEY=$('key').value.trim(); ls.set('tern.ttkey',TTKEY);
-  keyStat();
-  if(TTKEY){ trafficOn=true; ls.set('tern.traffic','1'); $('traf').classList.add('on');
-    removeTraffic(); addTraffic(); loadIncidents(false); }
-  selftest();
+$('locBtn').onclick = () => { if(!me) useGps(); else toggleFollow(); };
+$('tiltBtn').onclick = () => {
+  const on = map.getPitch() < 20;
+  $('tiltBtn').classList.toggle('on', on);
+  map.easeTo({ pitch: on ? 58 : 0, duration:650 });
 };
-function keyStat(){
-  const d=$('kdot'), t=$('ktxt');
-  if(TTKEY){ d.className='dot good'; t.textContent='Key saved in this browser. Traffic and incidents are on.'; }
-  else { d.className='dot'; t.textContent='No key yet. Traffic flow and incidents stay off.'; }
+$('trafficBtn').onclick = () => {
+  if(!ttKey){ openDiag(); toast('Add a free TomTom key to switch traffic on', 4500); return; }
+  trafficOn = !trafficOn; store.set('tern.traffic', trafficOn ? '1' : '0');
+  $('trafficBtn').classList.toggle('on', trafficOn);
+  if(trafficOn) addTraffic(); else removeTraffic();
+  stamp();
+};
+function openDiag(){ $('diag').hidden = false; systemCheck(); }
+$('diagBtn').onclick = openDiag;
+$('diagClose').onclick = () => $('diag').hidden = true;
+$('diag').addEventListener('click', e => { if(e.target === $('diag')) $('diag').hidden = true; });
+$('retest').onclick = systemCheck;
+$('saveKey').onclick = () => {
+  ttKey = $('ttKey').value.trim(); store.set('tern.ttkey', ttKey);
+  keyHint();
+  if(ttKey){ trafficOn = true; store.set('tern.traffic','1'); $('trafficBtn').classList.add('on');
+    removeTraffic(); addTraffic(); }
+  stamp(); systemCheck();
+};
+function keyHint(){
+  $('keyHint').textContent = ttKey
+    ? 'Saved in this browser only. Restrict the key to this domain in your TomTom settings.'
+    : 'Without a key the map, search, routing and GPS all still work. Only live traffic is off.';
 }
-addEventListener('keydown',e=>{
-  if(e.target===$('q')) return;
-  if(e.key==='/'){ e.preventDefault(); $('q').focus(); $('q').select(); }
-  else if(e.key==='Escape'){ $('hits').classList.remove('on'); $('diag').classList.remove('on');
-    if(navSt) exitNav(); }
-  else if(e.key==='t'){ $('theme').click(); }
-  else if(e.key==='g'){ $('loc').click(); }
+$('navStop').onclick = endNav;
+$('navPrev').onclick = () => navStep(-1);
+$('navNext').onclick = () => navStep(1);
+addEventListener('keydown', e => {
+  if(e.target.tagName === 'INPUT') return;
+  if(e.key === 't') $('themeBtn').click();
+  else if(e.key === 'g') $('locBtn').click();
+  else if(e.key === 'Escape'){ hideSug(); $('diag').hidden = true; if(nav) endNav(); }
+  else if(nav && (e.key === 'ArrowRight' || e.key === ' ')){ e.preventDefault(); navStep(1); }
+  else if(nav && e.key === 'ArrowLeft'){ e.preventDefault(); navStep(-1); }
 });
-$('key').value=TTKEY; keyStat(); setGps('idle');
-setTimeout(()=>selftest().then(n=>{ if(n) { $('diag').classList.add('on');
-  toast(n+' service'+(n>1?'s':'')+' failed, see the panel',5000); } }),1800);
-$('traf').classList.toggle('on',trafficOn&&!!TTKEY);
-stamp();
+addEventListener('offline', () => toast('You are offline. Tiles, search and routing will fail until you reconnect.', 6000));
+addEventListener('online', () => toast('Back online', 2200));
+addEventListener('beforeunload', () => { if(watch != null && navigator.geolocation) navigator.geolocation.clearWatch(watch); });
+
+$('ttKey').value = ttKey; keyHint(); stamp();
+$('trafficBtn').classList.toggle('on', trafficOn && !!ttKey);
+try{
+  const t = JSON.parse(store.get('tern.to', 'null'));
+  if(t && isFinite(t.lat)) { trip.to = t; $('toInput').value = t.name; $('clearTo').hidden = false; }
+}catch(e){}
 </script>
 </body>
 </html>

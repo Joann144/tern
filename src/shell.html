@@ -1,88 +1,157 @@
 <!DOCTYPE html>
-<html lang="en" data-t="dark">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Tern</title>
+<meta name="description" content="Open map and trip planner. Drive, transit, bike and walk directions on OpenStreetMap data.">
 <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
 <link rel="preconnect" href="https://photon.komoot.io">
+<link rel="preconnect" href="https://api.transitous.org">
 <style>__MAPLIBRE_CSS__</style>
 <style>__CSS__</style>
 </head>
 <body>
 <div id="map"></div>
-<div id="grid"></div>
-<div id="boot"><span class="pulse"></span> initialising</div>
 
-<div id="find">
-  <div class="p" id="bar">
-    <span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span>
-    <input id="q" placeholder="search destination" autocomplete="off" spellcheck="false" enterkeyhint="search">
-    <button class="xb" id="qx" hidden title="Clear"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+<!-- ───────────────── trip planner ───────────────── -->
+<aside id="panel">
+  <header id="brand">
+    <div class="mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l6-3 6 3 6-3v13l-6 3-6-3-6 3V7z"/><path d="M9 4v13M15 7v13"/></svg>
+    </div>
+    <h1>Tern</h1>
+    <button class="ghost" id="themeBtn" title="Light or dark (T)" aria-label="Toggle theme">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.2M12 19.8V22M2 12h2.2M19.8 12H22M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M19.1 4.9l-1.6 1.6M6.5 17.5l-1.6 1.6"/></svg>
+    </button>
+    <button class="ghost" id="diagBtn" title="System check" aria-label="System check">
+      <span class="pip" id="diagPip" hidden></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.8"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-2.9 1.2 2 2 0 11-4 0 1.7 1.7 0 00-2.9-1.2l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.7 1.7 0 003 15a2 2 0 110-4 1.7 1.7 0 001.2-2.9l-.1-.1a2 2 0 112.8-2.8l.1.1A1.7 1.7 0 0010 4.2a2 2 0 114 0 1.7 1.7 0 002.9 1.2l.1-.1a2 2 0 112.8 2.8l-.1.1A1.7 1.7 0 0021 11a2 2 0 110 4z"/></svg>
+    </button>
+  </header>
+
+  <div id="planner">
+    <div class="fields">
+      <div class="rail">
+        <span class="dot start"></span><span class="bar"></span><span class="dot end"></span>
+      </div>
+      <div class="inputs">
+        <div class="field" data-slot="from">
+          <input id="fromInput" placeholder="Choose a starting point" autocomplete="off" spellcheck="false">
+          <button class="mini" id="useGps" title="Use my location">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7.5"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></svg>
+          </button>
+        </div>
+        <div class="field" data-slot="to">
+          <input id="toInput" placeholder="Where to?" autocomplete="off" spellcheck="false" enterkeyhint="search">
+          <button class="mini" id="clearTo" title="Clear" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </div>
+      </div>
+      <button class="mini swap" id="swapBtn" title="Swap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16M7 4L4 7M7 4l3 3M17 20V4M17 20l3-3M17 20l-3-3"/></svg>
+      </button>
+    </div>
+
+    <nav id="modes" role="tablist">
+      <button class="mode" data-mode="drive" role="tab" title="Drive">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14M4 17v-4.2l1.8-4.3A2 2 0 017.6 7h8.8a2 2 0 011.8 1.5L20 12.8V17"/><circle cx="7.5" cy="17" r="1.6"/><circle cx="16.5" cy="17" r="1.6"/></svg>
+        <span>Drive</span><em class="eta"></em>
+      </button>
+      <button class="mode" data-mode="transit" role="tab" title="Transit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="13" rx="2.5"/><path d="M6 10h12M9 20l-1.5 2M15 20l1.5 2M8 16.5h.01M16 16.5h.01"/></svg>
+        <span>Transit</span><em class="eta"></em>
+      </button>
+      <button class="mode" data-mode="bike" role="tab" title="Bike">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17" r="3.3"/><circle cx="18.5" cy="17" r="3.3"/><path d="M5.5 17l4-9h5M12 17l3-8M14 8h3"/></svg>
+        <span>Bike</span><em class="eta"></em>
+      </button>
+      <button class="mode" data-mode="walk" role="tab" title="Walk">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="1.8"/><path d="M11 21l2-6-2.5-2.5L9.5 9 13 7.5l3 2.5 2.5 1M10.5 12.5L7 15l-1 6"/></svg>
+        <span>Walk</span><em class="eta"></em>
+      </button>
+    </nav>
+
+    <div id="suggest" hidden></div>
+    <div id="results"></div>
   </div>
-  <div class="p" id="hits"></div>
+
+  <footer id="credit">
+    Map <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> ·
+    Data <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> ·
+    Transit <a href="https://transitous.org" target="_blank" rel="noopener">Transitous</a>
+  </footer>
+</aside>
+
+<button id="panelToggle" aria-label="Show or hide the planner">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>
+</button>
+
+<!-- ───────────────── map controls ───────────────── -->
+<div id="tools">
+  <button class="tool" id="locBtn" title="My location (G)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7.5"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></svg>
+  </button>
+  <button class="tool" id="trafficBtn" title="Live traffic">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="3"/><circle cx="12" cy="7" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="17" r="1.4"/></svg>
+  </button>
+  <button class="tool" id="tiltBtn" title="3D">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>
+  </button>
 </div>
 
-<div id="rail">
-  <div class="r" id="loc" title="GPS / follow (g)">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3.2M12 18.8V22M2 12h3.2M18.8 12H22"/><circle cx="12" cy="12" r="8"/></svg>
-  </div>
-  <div class="r" id="tilt" title="3D tilt"><span class="t">3D</span></div>
-  <div class="r" id="theme" title="Light / dark (t)">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.4M12 19.6V22M2 12h2.4M19.6 12H22M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M19.1 4.9l-1.7 1.7M6.6 17.4l-1.7 1.7"/></svg>
-  </div>
-  <div class="r" id="traf" title="Live traffic and closures"><span class="t">TRFC</span></div>
-  <div class="r" id="gear" title="Diagnostics and settings" style="position:relative">
-    <span class="bad" id="diagdot" style="display:none"></span>
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-2.9 1.2 2 2 0 11-4 0 1.7 1.7 0 00-2.9-1.2l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.7 1.7 0 003 15a2 2 0 110-4 1.7 1.7 0 001.2-2.9l-.1-.1a2 2 0 112.8-2.8l.1.1A1.7 1.7 0 0010 4.2a2 2 0 114 0 1.7 1.7 0 002.9 1.2l.1-.1a2 2 0 112.8 2.8l-.1.1A1.7 1.7 0 0021 11a2 2 0 110 4z"/></svg>
-  </div>
-</div>
+<div id="scalebox"><span id="trafficStamp"></span></div>
 
-<div class="p" id="foot"><span id="upd"></span></div>
-
-<div class="p" id="card"><button class="close" id="cardx">&times;</button><div id="cardb"></div></div>
-
-<div id="hud">
-  <div class="p" id="hudtop">
-    <div class="mi" id="hudmi"></div>
-    <div class="nt">
-      <div id="hudd">--</div>
-      <div id="hudi"></div>
-      <div id="hudr"></div>
-      <div id="gpschip" class="chip">GPS OFF</div>
+<!-- ───────────────── turn-by-turn ───────────────── -->
+<div id="nav" hidden>
+  <div id="navCard">
+    <div class="turn" id="navIcon"></div>
+    <div class="txt">
+      <div id="navDist">—</div>
+      <div id="navInstr"></div>
+      <div id="navMeta"></div>
     </div>
   </div>
-  <div class="p" id="hudbot">
-    <div class="cell"><div class="cv num" id="hudeta">--</div><div class="ck">arrival</div></div>
-    <div class="cell"><div class="cv num" id="hudrem">--</div><div class="ck">remaining</div></div>
-    <div class="cell"><div class="cv num" id="hudsp">--</div><div class="ck">speed</div></div>
-    <button class="stepb" id="hudprev" title="Previous step (left arrow)">&#9664;</button>
-    <button class="stepb next" id="hudnext" title="Next step (right arrow or space)">NEXT &#9654;</button>
-    <button id="hudx">END</button>
+  <div id="navBar">
+    <div class="stat"><b id="navEta">—</b><span>Arrive</span></div>
+    <div class="stat"><b id="navLeft">—</b><span>Left</span></div>
+    <div class="stat"><b id="navSpeed">—</b><span>Speed</span></div>
+    <button class="nb" id="navPrev" title="Previous (←)">Back</button>
+    <button class="nb primary" id="navNext" title="Next (→)">Next</button>
+    <button class="nb stop" id="navStop">End</button>
   </div>
 </div>
 
-<div id="diag">
-  <div class="p" id="diagb">
-    <button class="close" id="diagx">&times;</button>
-    <h3>System check</h3>
-    <p class="note">Every service this app depends on, tested live. Anything red is the reason something is not working.</p>
-    <div class="sv" id="sv-tile"><span class="sd"></span><span class="sn">Map tiles</span><span class="se">idle</span></div>
-    <div class="sv" id="sv-geo"><span class="sd"></span><span class="sn">Search</span><span class="se">idle</span></div>
-    <div class="sv" id="sv-rt1"><span class="sd"></span><span class="sn">Router</span><span class="se">idle</span></div>
-    <div class="sv" id="sv-rt2"><span class="sd"></span><span class="sn">Router backup</span><span class="se">idle</span></div>
-    <div class="sv" id="sv-traf"><span class="sd"></span><span class="sn">Live traffic</span><span class="se">idle</span></div>
-    <div class="sv" id="sv-gps"><span class="sd"></span><span class="sn">GPS</span><span class="se">idle</span></div>
-    <p class="fix" id="fix" style="display:none">Something above is blocked. This happens when the page is opened straight off the disk, because the browser treats a file as having no origin and some services refuse it. Fix: put this file in a folder, open a terminal there, run <b>python -m http.server 8000</b>, then visit <b>http://localhost:8000</b>. Everything above will go green.</p>
-    <label for="key">TomTom API key, for live traffic and closures</label>
-    <input id="key" placeholder="paste key here" spellcheck="false" autocomplete="off">
-    <div class="sv" style="border:0"><span class="sd" id="kdot"></span><span class="se" id="ktxt"></span></div>
-    <div class="row"><button class="btn go" id="keysave">Save key</button><button class="btn" id="retest">Retest</button></div>
+<!-- ───────────────── system check ───────────────── -->
+<div id="diag" hidden>
+  <div class="sheet">
+    <button class="ghost close" id="diagClose" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <h2>System check</h2>
+    <p class="lede">Every service this app depends on, tested live. Anything red is the reason something is not working.</p>
+    <ul id="svcList">
+      <li data-svc="tiles"><i></i><b>Map tiles</b><span>idle</span></li>
+      <li data-svc="geo"><i></i><b>Search</b><span>idle</span></li>
+      <li data-svc="drive"><i></i><b>Driving</b><span>idle</span></li>
+      <li data-svc="walkbike"><i></i><b>Walk &amp; bike</b><span>idle</span></li>
+      <li data-svc="transit"><i></i><b>Transit</b><span>idle</span></li>
+      <li data-svc="traffic"><i></i><b>Live traffic</b><span>idle</span></li>
+      <li data-svc="gps"><i></i><b>GPS</b><span>idle</span></li>
+    </ul>
+    <label for="ttKey">TomTom key, for live traffic and closures</label>
+    <input id="ttKey" placeholder="paste key here" spellcheck="false" autocomplete="off">
+    <p class="hint" id="keyHint"></p>
+    <div class="actions">
+      <button class="btn primary" id="saveKey">Save key</button>
+      <button class="btn" id="retest">Run again</button>
+    </div>
   </div>
 </div>
 
-<div class="p" id="toast"></div>
-<div id="fail"><div class="p" id="failb"></div></div>
+<div id="toast"></div>
+<div id="fatal" hidden><div class="sheet"><h2 id="fatalH"></h2><p id="fatalP"></p><pre id="fatalPre"></pre></div></div>
 
 <script>__MAPLIBRE_JS__</script>
 <script>__APP__</script>
