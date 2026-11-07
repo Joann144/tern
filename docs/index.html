@@ -851,10 +851,7 @@ function needStart(){
     '</div>';
   const b = $('startHere');
   if(b) b.onclick = () => { b.textContent = 'Locating…'; useGps(); };
-  if(navigator.geolocation && navigator.permissions && navigator.permissions.query){
-    navigator.permissions.query({ name:'geolocation' })
-      .then(st => { if(st.state === 'granted') useGps(); }).catch(() => {});
-  }
+  if(navigator.geolocation) useGps();
 }
 
 /* ── recent destinations ──────────────────────────────────── */
@@ -1346,11 +1343,40 @@ function showMe(lat, lon){
     meMk = new maplibregl.Marker({ element:d }).setLngLat([lon, lat]).addTo(map);
   } else meMk.setLngLat([lon, lat]);
 }
+function requestFix(){
+  return new Promise((resolve, reject) => {
+    if(!navigator.geolocation) return reject({ code:0 });
+    // precise first, briefly; desktops without GPS hardware time out here
+    navigator.geolocation.getCurrentPosition(resolve, e1 => {
+      if(e1.code === 1) return reject(e1);                 // denied: retrying is pointless
+      // coarse retry: wifi and IP positioning, happy to use a cached fix
+      navigator.geolocation.getCurrentPosition(resolve, reject,
+        { enableHighAccuracy:false, timeout:16000, maximumAge:600000 });
+    }, { enableHighAccuracy:true, timeout:7000, maximumAge:60000 });
+  });
+}
+function rememberFix(lat, lon){ store.set('tern.lastfix', JSON.stringify({ lat, lon, t:Date.now() })); }
+function lastFix(){
+  try{
+    const f = JSON.parse(store.get('tern.lastfix', 'null'));
+    if(f && isFinite(f.lat) && Date.now() - f.t < 7 * 864e5) return f;
+  }catch(e){}
+  return null;
+}
 function gpsBanner(state){
   const bar = $('gpsbar'), t = $('gpsTitle'), b = $('gpsBody'), fix = $('gpsFix');
   if(state === 'granted'){ bar.hidden = true; return; }
   bar.hidden = false; fix.hidden = false;
-  if(state === 'denied'){
+  if(state === 'searching'){
+    t.textContent = 'Finding your location';
+    b.textContent = 'This can take a few seconds on a computer without GPS hardware.';
+    fix.hidden = true;
+  } else if(state === 'timeout'){
+    t.textContent = 'Could not get a location';
+    b.textContent = 'Your computer has no GPS chip and the network lookup did not answer. ' +
+      'Tap the map to set a starting point, or try again.';
+    fix.textContent = 'Try again';
+  } else if(state === 'denied'){
     t.textContent = 'Location is blocked';
     b.textContent = 'Click the icon at the left of the address bar, set Location to Allow, then press Retry. ' +
       'Until then you can tap the map to set a starting point.';
@@ -1370,37 +1396,47 @@ function checkGpsPermission(){
   if(!navigator.geolocation){ gpsBanner('unsupported'); return; }
   if(navigator.permissions && navigator.permissions.query){
     navigator.permissions.query({ name:'geolocation' }).then(st => {
-      gpsBanner(st.state);
-      st.onchange = () => { gpsBanner(st.state); if(st.state === 'granted') useGps(); };
+      if(st.state !== 'granted') gpsBanner(st.state);   // granted only means allowed, not located
+      st.onchange = () => { if(st.state === 'granted') useGps(); else gpsBanner(st.state); };
     }).catch(() => gpsBanner('prompt'));
   } else gpsBanner('prompt');
 }
-function initialLocate(){
-  checkGpsPermission();
-  if(!navigator.geolocation) return;
-  navigator.geolocation.getCurrentPosition(p => {
+async function locateNow(makeStart){
+  if(!navigator.geolocation){ gpsBanner('unsupported'); return false; }
+  gpsBanner('searching');
+  try{
+    const p = await requestFix();
     showMe(p.coords.latitude, p.coords.longitude);
-    $('locBtn').classList.add('live'); gpsBanner('granted');
-    if(!trip.from){
+    rememberFix(me.lat, me.lon);
+    $('locBtn').classList.add('live');
+    gpsBanner('granted');
+    if(makeStart) setPlace('from', { name:'Your location', detail:'', lat:me.lat, lon:me.lon });
+    return true;
+  }catch(e){
+    gpsBanner(e && e.code === 1 ? 'denied' : 'timeout');
+    return false;
+  }
+}
+function initialLocate(){
+  const last = lastFix();
+  if(last && !trip.from){
+    showMe(last.lat, last.lon);
+    trip.from = { name:'Last known location', detail:'', lat:last.lat, lon:last.lon };
+    $('fromInput').value = 'Last known location';
+    if(trip.to) planAll();
+  }
+  locateNow(false).then(got => {
+    if(got && (!trip.from || /location$/i.test(trip.from.name))){
       trip.from = { name:'Your location', detail:'', lat:me.lat, lon:me.lon };
       $('fromInput').value = 'Your location';
       if(trip.to) planAll();
     }
-    if(!trip.to) map.flyTo({ center:[me.lon, me.lat], zoom:14, speed:1.2 });
-  }, () => {}, { enableHighAccuracy:true, timeout:9000, maximumAge:30000 });
+    if(got && !trip.to) map.flyTo({ center:[me.lon, me.lat], zoom:14, speed:1.2 });
+  });
 }
-function useGps(){
-  if(!navigator.geolocation){ toast('This browser will not share a location'); return; }
-  navigator.geolocation.getCurrentPosition(p => {
-    showMe(p.coords.latitude, p.coords.longitude);
-    $('locBtn').classList.add('live'); gpsBanner('granted');
-    setPlace('from', { name:'Your location', detail:'', lat:me.lat, lon:me.lon });
-  }, err => {
-    gpsBanner(err.code === 1 ? 'denied' : 'prompt');
-    toast(err.code === 1
-      ? 'Location is blocked for this site. Allow it in the padlock menu, or click the map to set a start point.'
-      : 'Could not get a GPS fix. Click the map to set a start point instead.', 6000);
-  }, { enableHighAccuracy:true, timeout:9000, maximumAge:20000 });
+async function useGps(){
+  const got = await locateNow(true);
+  if(!got) toast('No location came back. Tap the map to set your starting point instead.', 6000);
 }
 function toggleFollow(){
   following = !following;
@@ -1409,7 +1445,8 @@ function toggleFollow(){
     if(!navigator.geolocation){ following = false; return; }
     watch = navigator.geolocation.watchPosition(p => {
       showMe(p.coords.latitude, p.coords.longitude);
-      $('locBtn').classList.add('live');
+      rememberFix(me.lat, me.lon);
+      $('locBtn').classList.add('live'); gpsBanner('granted');
       speed = p.coords.speed != null && p.coords.speed >= 0
         ? (IMP() ? p.coords.speed * 2.23694 : p.coords.speed * 3.6) : null;
       advance();

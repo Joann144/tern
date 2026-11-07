@@ -38,8 +38,19 @@ const LS = {};
 globalThis.localStorage = { getItem:k=>k in LS?LS[k]:null, setItem:(k,v)=>LS[k]=String(v) };
 Object.defineProperty(globalThis, 'navigator', { configurable:true, writable:true, value:{
   onLine:true,
-  geolocation:{ getCurrentPosition(ok){ ok({coords:{latitude:35.2271,longitude:-80.8431,speed:11,heading:90}}); },
-                watchPosition(){ return 7; }, clearWatch(){} } } });
+  geolocation:{
+    mode:'ok',          // 'ok' | 'timeout' | 'precise-timeout' | 'denied'
+    calls:[],
+    getCurrentPosition(ok, err, opts){
+      this.calls.push(opts && opts.enableHighAccuracy ? 'precise' : 'coarse');
+      const m = this.mode;
+      if(m === 'denied') return err({ code:1, message:'User denied Geolocation' });
+      if(m === 'timeout') return err({ code:3, message:'Timeout expired' });
+      if(m === 'precise-timeout' && opts && opts.enableHighAccuracy)
+        return err({ code:3, message:'Timeout expired' });
+      ok({ coords:{ latitude:35.2271, longitude:-80.8431, speed:11, heading:90 } });
+    },
+    watchPosition(){ return 7; }, clearWatch(){} } } });
 let RAFQ = new Map(), rid = 0;
 globalThis.requestAnimationFrame = fn => { RAFQ.set(++rid, fn); return rid; };
 globalThis.cancelAnimationFrame = id => RAFQ.delete(id);
@@ -172,7 +183,7 @@ const probe = `;globalThis.T = { fmtDist, fmtDur, fmtShort, decodePoly, geocode,
   setPlace, trip, SERVICES, hav, addLayers, paintAlts, viaLabel, departures, refreshDepartures, emptyState,
   needStart, recents, rememberRecent, adoptKey, get ttKeyNow(){return ttKey},
   loadIncidents, showIncident, clearIncidents, get incNow(){return incData},
-  gpsBanner, recentreNav, arrive, paintNav,
+  gpsBanner, recentreNav, arrive, paintNav, requestFix, locateNow, lastFix,
   set trafficFlag(v){trafficOn=v},
   setOptions:(o,c)=>{ options=o; current=c; },
   get options(){return options}, get current(){return current}, get nav(){return nav}, set nav(v){nav=v},
@@ -424,6 +435,39 @@ chk(T.nav.i===2, 'gps advance moves past a reached maneuver, got ' + T.nav.i);
 T.me = { lat:d.legs[0].steps[0].lat, lon:d.legs[0].steps[0].lon }; T.advance();
 chk(T.nav.i===2, 'gps jitter must not rewind');
 T.endNav(); chk(E['nav'].hidden===true, 'nav closes');
+
+/* ── geolocation on a machine with no GPS chip ────────────── */
+console.log('\n── geolocation fallbacks');
+const geo = navigator.geolocation;
+
+geo.mode = 'precise-timeout'; geo.calls = [];
+const got1 = await T.locateNow(false);
+console.log('   precise times out -> attempts: ' + geo.calls.join(' then ') + ' | located: ' + got1);
+chk(got1 === true, 'falls back to a coarse network fix when precise times out');
+chk(geo.calls.join(',') === 'precise,coarse', 'tries precise first, then coarse');
+
+geo.mode = 'timeout'; geo.calls = [];
+const got2 = await T.locateNow(false);
+console.log('   both time out -> located: ' + got2 +
+  ' | banner: "' + document.getElementById('gpsTitle').textContent + '"');
+chk(got2 === false, 'reports failure when nothing answers');
+chk(/Could not get a location/.test(document.getElementById('gpsTitle').textContent),
+    'timeout is explained, not silent');
+chk(document.getElementById('gpsbar').hidden === false, 'banner stays visible on timeout');
+
+geo.mode = 'denied'; geo.calls = [];
+await T.locateNow(false);
+console.log('   denied -> attempts: ' + geo.calls.join(',') +
+  ' | banner: "' + document.getElementById('gpsTitle').textContent + '"');
+chk(geo.calls.length === 1, 'does not retry when the user denied it');
+chk(/blocked/i.test(document.getElementById('gpsTitle').textContent), 'denial explained separately');
+
+geo.mode = 'ok';
+await T.locateNow(false);
+const lf = T.lastFix();
+console.log('   success -> last fix cached: ' + (lf ? lf.lat + ', ' + lf.lon : 'none'));
+chk(lf && Math.abs(lf.lat - 35.2271) < 1e-6, 'a good fix is cached for the next visit');
+chk(document.getElementById('gpsbar').hidden === true, 'banner clears once located');
 
 /* ── system check ─────────────────────────────────────────── */
 console.log('\n── system check');
