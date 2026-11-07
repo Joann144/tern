@@ -274,6 +274,9 @@ svg{width:18px;height:18px;flex:none}
 .nb:disabled{opacity:.35;cursor:not-allowed}
 .nb.primary{background:var(--grad);border-color:transparent;color:#fff}
 .nb.stop{color:var(--bad);border-color:var(--bad);background:transparent}
+.nb.icon{width:36px;padding:0;display:grid;place-items:center}
+.nb.icon svg{width:16px;height:16px}
+.nb.on{background:var(--grad);border-color:transparent;color:#fff}
 .nb.stop:hover{background:var(--bad);color:#fff}
 
 #arrived{position:absolute;left:50%;transform:translateX(-50%);

@@ -24,6 +24,12 @@ Built on OpenStreetMap data through open services, with optional live traffic fr
 | Live traffic flow | TomTom raster flow tiles | yes |
 | Incidents and road closures | TomTom Incident Details v5 | yes |
 
+## Driving
+
+Press Start and the map tips into a driving view, centred on you, rotated to your heading so the road ahead is always up. Directions are spoken aloud through the browser's own speech engine, with no service or key behind it: a warning at roughly half a mile, again at a few hundred feet, and the instruction itself as you reach the turn. Street abbreviations are expanded first so it says "Boulevard" and "Interstate 277" rather than reading out letters. Each band is announced once, and the voice can be muted from the navigation bar.
+
+**Preview drive** replays the whole route as if you were driving it, moving your position along the road, rotating the map through every turn and speaking each instruction. It exists because a desktop computer has no GPS, so this is the only way to see navigation work on one.
+
 ## Locating you
 
 Three tiers, in order, so a machine with no GPS chip still works:

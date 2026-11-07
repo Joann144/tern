@@ -285,6 +285,9 @@ svg{width:18px;height:18px;flex:none}
 .nb:disabled{opacity:.35;cursor:not-allowed}
 .nb.primary{background:var(--grad);border-color:transparent;color:#fff}
 .nb.stop{color:var(--bad);border-color:var(--bad);background:transparent}
+.nb.icon{width:36px;padding:0;display:grid;place-items:center}
+.nb.icon svg{width:16px;height:16px}
+.nb.on{background:var(--grad);border-color:transparent;color:#fff}
 .nb.stop:hover{background:var(--bad);color:#fff}
 
 #arrived{position:absolute;left:50%;transform:translateX(-50%);
@@ -470,6 +473,10 @@ html[data-theme="dark"] #toast{background:#eef1f7;color:#0f1420}
       <button class="nb stop" id="navStop">End</button>
     </div>
     <div class="row2">
+      <button class="nb icon" id="voiceBtn" title="Spoken directions">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M16 9a4 4 0 010 6M19 6.5a8 8 0 010 11"/></svg>
+      </button>
+      <button class="nb" id="simBtn" title="Watch the drive play out">Preview drive</button>
       <span class="trip" id="navTrip"></span>
       <button class="nb" id="navPrev" title="Previous turn">Back</button>
       <button class="nb primary" id="navNext" title="Next turn">Next turn</button>
@@ -1494,12 +1501,75 @@ function toggleFollow(){
   } else if(watch != null){ navigator.geolocation.clearWatch(watch); watch = null; }
 }
 
+/* ── spoken guidance ──────────────────────────────────────── */
+let voiceOn = store.get('tern.voice', '1') === '1';
+const canSpeak = () => typeof speechSynthesis !== 'undefined' && typeof SpeechSynthesisUtterance !== 'undefined';
+function speak(text, force){
+  if((!voiceOn && !force) || !canSpeak() || !text) return;
+  try{
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.03; u.pitch = 1; u.volume = 1; u.lang = 'en-US';
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+function spokenDistance(m){
+  if(m == null) return '';
+  if(IMP()){
+    const ft = m * 3.28084, mi = m / 1609.34;
+    if(mi >= 0.45) return 'In half a mile, ';
+    if(mi >= 0.2)  return 'In a quarter mile, ';
+    if(ft >= 400)  return 'In ' + (Math.round(ft / 100) * 100) + ' feet, ';
+    if(ft >= 150)  return 'In ' + (Math.round(ft / 50) * 50) + ' feet, ';
+    return '';
+  }
+  if(m >= 800) return 'In ' + (m / 1000).toFixed(1).replace('.0','') + ' kilometres, ';
+  if(m >= 150) return 'In ' + (Math.round(m / 50) * 50) + ' metres, ';
+  return '';
+}
+function spokenStep(text){
+  return String(text || '')
+    .replace(/\bSt\b/g, 'Street').replace(/\bRd\b/g, 'Road').replace(/\bAve\b/g, 'Avenue')
+    .replace(/\bBlvd\b/g, 'Boulevard').replace(/\bDr\b/g, 'Drive').replace(/\bHwy\b/g, 'Highway')
+    .replace(/\bLn\b/g, 'Lane').replace(/\bPkwy\b/g, 'Parkway').replace(/\bI-(\d+)/g, 'Interstate $1');
+}
+const VOICE_MARKS = [800, 300, 60];
+function voiceTick(){
+  if(!nav || nav.done || !me) return;
+  const s = nav.steps[nav.i];
+  if(!s || s.lat == null) return;
+  const d = hav(me, { lat:s.lat, lon:s.lon });
+  nav.said = nav.said || {};
+  const done = nav.said[nav.i] = nav.said[nav.i] || [];
+  // announce for the band the distance actually falls in, so sitting on top of
+  // a turn does not silently consume the half-mile warning
+  let band = null;
+  for(let k = 0; k < VOICE_MARKS.length; k++){
+    const hi = VOICE_MARKS[k], lo = VOICE_MARKS[k + 1] || 0;
+    if(d <= hi && d > lo){ band = hi; break; }
+  }
+  if(band && done.indexOf(band) === -1){
+    done.push(band);
+    speak(spokenDistance(d) + spokenStep(s.text));
+  }
+}
+
+/* ── which way am I pointing ──────────────────────────────── */
+function bearing(a, b){
+  const t = x => x * Math.PI / 180;
+  const y = Math.sin(t(b.lon - a.lon)) * Math.cos(t(b.lat));
+  const x = Math.cos(t(a.lat)) * Math.sin(t(b.lat)) -
+            Math.sin(t(a.lat)) * Math.cos(t(b.lat)) * Math.cos(t(b.lon - a.lon));
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
 /* ── turn by turn ─────────────────────────────────────────── */
 let nav = null;
 function startNav(it){
   if(!it || !it.legs[0] || !it.legs[0].steps.length) return;
   nav = { steps: it.legs[0].steps, i:0, total: it.duration, dist: it.distance, via: it.via || '',
-          dest: (trip.to && trip.to.name) || 'your destination', done:false };
+          dest: (trip.to && trip.to.name) || 'your destination', done:false,
+          coords: (it.legs[0].coords || []).slice(), said:{} };
   $('arrived').hidden = true; $('navBar').hidden = false;
   $('nav').hidden = false;
   $('panel').classList.add('hid');
@@ -1508,9 +1578,13 @@ function startNav(it){
   map.easeTo(Object.assign({ pitch:60, zoom:17, duration:900 },
     centre ? { center: centre } : {}));
   if(!following) toggleFollow();
+  $('voiceBtn').classList.toggle('on', voiceOn);
+  speak('Starting route to ' + nav.dest + '. ' + spokenStep(nav.steps[0].text));
   paintNav();
 }
 function endNav(){
+  stopSim();
+  if(canSpeak()){ try{ speechSynthesis.cancel(); }catch(e){} }
   nav = null;
   $('nav').hidden = true; $('arrived').hidden = true; $('recentre').hidden = true;
   $('panel').classList.remove('hid');
@@ -1526,6 +1600,8 @@ function recentreNav(){
 function arrive(){
   if(!nav || nav.done) return;
   nav.done = true;
+  stopSim();
+  speak('You have arrived at ' + nav.dest);
   $('arrivedWhere').textContent = nav.dest;
   $('arrived').hidden = false;
   $('navBar').hidden = true;
@@ -1557,6 +1633,7 @@ function paintNav(){
   $('navNext').disabled = nav.i >= nav.steps.length - 1;
   const pct = nav.dist ? Math.max(0, Math.min(100, (1 - left / nav.dist) * 100)) : 0;
   $('navProgressFill').style.width = pct.toFixed(1) + '%';
+  voiceTick();
   const last = nav.steps[nav.steps.length - 1];
   if(me && last && last.lat != null && hav(me, { lat:last.lat, lon:last.lon }) < 45) arrive();
 }
@@ -1564,6 +1641,7 @@ function navStep(d){
   if(!nav) return;
   nav.i = Math.max(0, Math.min(nav.steps.length - 1, nav.i + d));
   const s = nav.steps[nav.i];
+  speak(spokenStep(s.text), false);
   if(s.lon != null) map.easeTo({ center:[s.lon, s.lat], zoom:17, pitch:60, duration:650 });
   paintNav();
 }
@@ -1580,6 +1658,61 @@ function advance(){
     if(target > nav.i) nav.i = target;
   }
   paintNav();
+}
+
+/* ── drive preview, for machines with no GPS ──────────────── */
+let sim = null;
+function cumulative(pts){
+  const acc = [0];
+  for(let i = 1; i < pts.length; i++)
+    acc.push(acc[i-1] + hav({ lat:pts[i-1][1], lon:pts[i-1][0] }, { lat:pts[i][1], lon:pts[i][0] }));
+  return acc;
+}
+function pointAt(pts, acc, dist){
+  if(dist <= 0) return { lon:pts[0][0], lat:pts[0][1], brg:0, done:false };
+  const total = acc[acc.length - 1];
+  if(dist >= total){
+    const a = pts[pts.length - 2] || pts[0], b = pts[pts.length - 1];
+    return { lon:b[0], lat:b[1], brg: bearing({lat:a[1],lon:a[0]}, {lat:b[1],lon:b[0]}), done:true };
+  }
+  let i = 1;
+  while(i < acc.length && acc[i] < dist) i++;
+  const seg = acc[i] - acc[i-1] || 1, f = (dist - acc[i-1]) / seg;
+  const a = pts[i-1], b = pts[i];
+  return { lon: a[0] + (b[0]-a[0]) * f, lat: a[1] + (b[1]-a[1]) * f,
+           brg: bearing({lat:a[1],lon:a[0]}, {lat:b[1],lon:b[0]}), done:false };
+}
+function startSim(){
+  if(!nav || !nav.coords || nav.coords.length < 2){ toast('No route geometry to preview'); return; }
+  stopSim();
+  if(following) toggleFollow();                      // the simulation drives position instead
+  const pts = nav.coords, acc = cumulative(pts);
+  const realSpeed = nav.dist && nav.total ? nav.dist / nav.total : 12;   // metres per second
+  // fast enough to watch, slow enough to follow
+  sim = { pts, acc, travelled:0, speed: Math.min(realSpeed * 3, 32), last: performance.now(), id:null };
+  $('simBtn').classList.add('on');
+  $('simBtn').textContent = 'Stop preview';
+  toast('Previewing the drive with spoken directions, sped up', 4500);
+  sim.id = setInterval(() => {
+    const now = performance.now();
+    const dt = Math.min(1, (now - sim.last) / 1000);
+    sim.last = now;
+    sim.travelled += sim.speed * dt;
+    const p = pointAt(sim.pts, sim.acc, sim.travelled);
+    me = { lat:p.lat, lon:p.lon };
+    speed = IMP() ? sim.speed * 2.23694 : sim.speed * 3.6;
+    showMe(p.lat, p.lon);
+    map.easeTo({ center:[p.lon, p.lat], bearing:p.brg, pitch:62, zoom:17,
+      duration:260, easing:t => t });
+    advance();
+    if(p.done){ arrive(); }
+  }, 260);
+}
+function stopSim(){
+  if(!sim) return;
+  clearInterval(sim.id); sim = null;
+  const b = $('simBtn');
+  if(b){ b.classList.remove('on'); b.textContent = 'Preview drive'; }
 }
 
 /* ── traffic ──────────────────────────────────────────────── */
@@ -1802,6 +1935,13 @@ function keyHint(){
 }
 $('navStop').onclick = endNav;
 $('recentre').onclick = recentreNav;
+$('voiceBtn').onclick = () => {
+  voiceOn = !voiceOn; store.set('tern.voice', voiceOn ? '1' : '0');
+  $('voiceBtn').classList.toggle('on', voiceOn);
+  if(voiceOn) speak('Voice guidance on', true);
+  else if(canSpeak()){ try{ speechSynthesis.cancel(); }catch(e){} }
+};
+$('simBtn').onclick = () => { if(sim) stopSim(); else startSim(); };
 $('arrivedDone').onclick = endNav;
 map.on('dragstart', () => { if(nav && !nav.done) $('recentre').hidden = false; });
 $('navPrev').onclick = () => navStep(-1);

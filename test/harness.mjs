@@ -52,6 +52,9 @@ Object.defineProperty(globalThis, 'navigator', { configurable:true, writable:tru
       ok({ coords:{ latitude:35.2271, longitude:-80.8431, speed:11, heading:90 } });
     },
     watchPosition(){ return 7; }, clearWatch(){} } } });
+const SPOKEN = [];
+globalThis.SpeechSynthesisUtterance = class { constructor(t){ this.text = t; } };
+globalThis.speechSynthesis = { cancel(){}, speak(u){ SPOKEN.push(u.text); } };
 let RAFQ = new Map(), rid = 0;
 globalThis.requestAnimationFrame = fn => { RAFQ.set(++rid, fn); return rid; };
 globalThis.cancelAnimationFrame = id => RAFQ.delete(id);
@@ -187,6 +190,8 @@ const probe = `;globalThis.T = { fmtDist, fmtDur, fmtShort, decodePoly, geocode,
   needStart, recents, rememberRecent, adoptKey, get ttKeyNow(){return ttKey},
   loadIncidents, showIncident, clearIncidents, get incNow(){return incData},
   gpsBanner, recentreNav, arrive, paintNav, requestFix, locateNow, lastFix, ipLocate, adoptStart,
+  speak, spokenDistance, spokenStep, voiceTick, bearing, pointAt, cumulative, startSim, stopSim,
+  get sim(){return sim},
   set trafficFlag(v){trafficOn=v},
   setOptions:(o,c)=>{ options=o; current=c; },
   get options(){return options}, get current(){return current}, get nav(){return nav}, set nav(v){nav=v},
@@ -438,6 +443,60 @@ chk(T.nav.i===2, 'gps advance moves past a reached maneuver, got ' + T.nav.i);
 T.me = { lat:d.legs[0].steps[0].lat, lon:d.legs[0].steps[0].lon }; T.advance();
 chk(T.nav.i===2, 'gps jitter must not rewind');
 T.endNav(); chk(E['nav'].hidden===true, 'nav closes');
+
+/* ── spoken guidance ──────────────────────────────────────── */
+console.log('\n── voice');
+console.log('   ' + [1000,700,200,100,30].map(m => m + 'm -> "' + T.spokenDistance(m).trim() + '"').join(' | '));
+chk(/half a mile/.test(T.spokenDistance(900)), 'half mile phrasing');
+chk(T.spokenDistance(20) === '', 'no distance lead-in once you are on top of the turn');
+const spoken = T.spokenStep('Turn right onto E Morehead St and join I-277');
+console.log('   abbreviations: "' + spoken + '"');
+chk(/Street/.test(spoken) && /Interstate 277/.test(spoken), 'abbreviations expanded for speech');
+
+SPOKEN.length = 0;
+T.me = { lat:A.lat, lon:A.lon };
+T.endNav(); T.startNav(d);
+console.log('   on start it says: "' + SPOKEN[0] + '"');
+chk(/Starting route/.test(SPOKEN[0] || ''), 'announces the route on start');
+
+// approaching a turn announces once per threshold, not on every tick
+SPOKEN.length = 0;
+const turn = d.legs[0].steps[0];
+for(const metres of [900, 700, 400, 250, 200, 50, 40]){
+  const dlat = metres / 111320;
+  T.me = { lat: turn.lat + dlat, lon: turn.lon };
+  T.voiceTick();
+}
+console.log('   approaching: ' + SPOKEN.length + ' announcements');
+SPOKEN.forEach(x => console.log('     "' + x + '"'));
+chk(SPOKEN.length === 3, 'one announcement per distance band, got ' + SPOKEN.length);
+
+/* ── heading and route interpolation ──────────────────────── */
+console.log('\n── heading');
+const north = T.bearing({lat:35.0,lon:-80.0},{lat:35.1,lon:-80.0});
+const east  = T.bearing({lat:35.0,lon:-80.0},{lat:35.0,lon:-79.9});
+console.log('   north=' + north.toFixed(1) + '°  east=' + east.toFixed(1) + '°');
+chk(Math.abs(north) < 1 || Math.abs(north-360) < 1, 'north is 0 degrees');
+chk(Math.abs(east - 90) < 1, 'east is 90 degrees');
+
+const pts = d.legs[0].coords, acc = T.cumulative(pts);
+const mid = T.pointAt(pts, acc, acc[acc.length-1] / 2);
+const end = T.pointAt(pts, acc, acc[acc.length-1] + 100);
+console.log('   midpoint ' + mid.lat.toFixed(4) + ', ' + mid.lon.toFixed(4) + ' | past the end flags done=' + end.done);
+chk(end.done === true, 'running off the end of the line is detected');
+chk(mid.lat > Math.min(...pts.map(p=>p[1])) && mid.lat < Math.max(...pts.map(p=>p[1])), 'midpoint lies on the route');
+
+/* ── drive preview ────────────────────────────────────────── */
+console.log('\n── drive preview');
+T.endNav(); T.me = { lat:A.lat, lon:A.lon }; T.startNav(d);
+T.startSim();
+chk(!!T.sim, 'preview starts');
+console.log('   running at ' + (T.sim.speed).toFixed(1) + ' m/s (route average ' +
+  (d.distance/d.duration).toFixed(1) + ' m/s)');
+chk(T.sim.speed > d.distance/d.duration, 'preview runs faster than real time');
+chk(T.sim.speed <= 32, 'but stays slow enough to watch, got ' + T.sim.speed.toFixed(1) + ' m/s');
+T.stopSim();
+chk(T.sim === null, 'preview stops cleanly');
 
 /* ── geolocation on a machine with no GPS chip ────────────── */
 console.log('\n── geolocation fallbacks');
