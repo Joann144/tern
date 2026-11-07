@@ -191,6 +191,7 @@ const probe = `;globalThis.T = { fmtDist, fmtDur, fmtShort, decodePoly, geocode,
   loadIncidents, showIncident, clearIncidents, get incNow(){return incData},
   gpsBanner, recentreNav, arrive, paintNav, requestFix, locateNow, lastFix, ipLocate, adoptStart,
   speak, spokenDistance, spokenStep, voiceTick, bearing, pointAt, cumulative, startSim, stopSim,
+  savedHome, beginPickStart, get userStartFlag(){return userStart}, set userStartFlag(v){userStart=v},
   get sim(){return sim},
   set trafficFlag(v){trafficOn=v},
   setOptions:(o,c)=>{ options=o; current=c; },
@@ -444,6 +445,39 @@ T.me = { lat:d.legs[0].steps[0].lat, lon:d.legs[0].steps[0].lon }; T.advance();
 chk(T.nav.i===2, 'gps jitter must not rewind');
 T.endNav(); chk(E['nav'].hidden===true, 'nav closes');
 
+/* ── a chosen start must survive late location results ────── */
+console.log('\n── start point ownership');
+T.userStartFlag = false;
+T.trip.from = null;
+T.setPlace('from', { name:'Charlotte Transportation Center', lat:35.2234, lon:-80.8382 });
+console.log('   user typed: "' + T.trip.from.name + '" | ownership flag: ' + T.userStartFlag);
+chk(T.userStartFlag === true, 'choosing a start marks it as the user\'s');
+
+// a background IP result lands afterwards and must be ignored
+navigator.geolocation.mode = 'timeout';
+const hijack = await T.locateNow(true, false);
+console.log('   after a late network lookup: "' + T.trip.from.name + '" (returned ' + hijack + ')');
+chk(T.trip.from.name === 'Charlotte Transportation Center', 'late network location does not hijack the chosen start');
+
+// adoptStart must also stand down
+T.adoptStart('Your location', 1, 2, false);
+chk(T.trip.from.name === 'Charlotte Transportation Center', 'late GPS does not hijack it either');
+
+// but pressing the button explicitly is allowed to override
+navigator.geolocation.mode = 'ok';
+await T.locateNow(true, true);
+console.log('   after pressing the location button: "' + T.trip.from.name + '"');
+chk(/Your location/.test(T.trip.from.name), 'an explicit press still works');
+
+/* ── a hand-set position is remembered ────────────────────── */
+localStorage.setItem('tern.home', JSON.stringify({ lat:35.2500, lon:-80.8600 }));
+const h = T.savedHome();
+console.log('\n── saved position: ' + h.lat + ', ' + h.lon);
+chk(h && Math.abs(h.lat - 35.25) < 1e-9, 'a hand-set position persists');
+localStorage.removeItem('tern.home');
+T.userStartFlag = false;
+T.trip.from = { name:'Your location', lat:A.lat, lon:A.lon };
+
 /* ── spoken guidance ──────────────────────────────────────── */
 console.log('\n── voice');
 console.log('   ' + [1000,700,200,100,30].map(m => m + 'm -> "' + T.spokenDistance(m).trim() + '"').join(' | '));
@@ -526,7 +560,7 @@ const got3 = await T.locateNow(false);
 console.log('   GPS and network both fail -> located: ' + got3 +
   ' | banner: "' + document.getElementById('gpsTitle').textContent + '"');
 chk(got3 === false, 'reports failure only when nothing at all answers');
-chk(/Could not get a location/.test(document.getElementById('gpsTitle').textContent),
+chk(/will not report a location/.test(document.getElementById('gpsTitle').textContent),
     'total failure is explained, not silent');
 chk(document.getElementById('gpsbar').hidden === false, 'banner stays visible on total failure');
 globalThis.fetch = realFetch2;

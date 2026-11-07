@@ -244,8 +244,10 @@ function pin(color){
     color + '"/><circle cx="13" cy="12.5" r="4.4" fill="#fff"/></svg>';
   return d;
 }
-function setPlace(slot, place){
+let userStart = false;          // true once the user has chosen a start themselves
+function setPlace(slot, place, auto){
   if(!place || !isFinite(place.lat) || !isFinite(place.lon)) return;
+  if(slot === 'from' && !auto) userStart = true;
   trip[slot] = place;
   $(slot + 'Input').value = place.name;
   if(slot === 'to') $('clearTo').hidden = false;
@@ -739,6 +741,17 @@ function choose(r){ if(!r) return; hideSug(); setPlace(sugSlot, r); }
 /* ── map interaction ──────────────────────────────────────── */
 function wireMap(){
   map.on('click', async e => {
+    if(pickingStart){
+      pickingStart = false;
+      map.getCanvas().style.cursor = '';
+      const lat = e.lngLat.lat, lon = e.lngLat.lng;
+      store.set('tern.home', JSON.stringify({ lat, lon }));
+      showMe(lat, lon);
+      setPlace('from', { name:'My position', detail:'set by hand', lat, lon });
+      gpsBanner('manual');
+      toast('Saved. Routes will start here until you change it.', 4500);
+      return;
+    }
     const hit = map.queryRenderedFeatures(e.point).find(f =>
       f.layer && /poi|place/i.test(f.layer['source-layer'] || '') && f.properties && f.properties.name);
     const base = { lat:e.lngLat.lat, lon:e.lngLat.lng };
@@ -799,11 +812,29 @@ function lastFix(){
   }catch(e){}
   return null;
 }
+let pickingStart = false;
+function beginPickStart(){
+  pickingStart = true;
+  map.getCanvas().style.cursor = 'crosshair';
+  toast('Tap your exact position on the map. It will be remembered.', 6000);
+}
+function savedHome(){
+  try{
+    const h = JSON.parse(store.get('tern.home', 'null'));
+    if(h && isFinite(h.lat) && isFinite(h.lon)) return h;
+  }catch(e){}
+  return null;
+}
 function gpsBanner(state){
   const bar = $('gpsbar'), t = $('gpsTitle'), b = $('gpsBody'), fix = $('gpsFix');
   if(state === 'granted'){ bar.hidden = true; return; }
   bar.hidden = false; fix.hidden = false;
-  if(state === 'approx'){
+  if(state === 'manual'){
+    t.textContent = 'Using the position you set';
+    b.textContent = 'Saved on this computer, so routes start here every time. ' +
+      'Press Set on map to move it.';
+    fix.textContent = 'Try GPS';
+  } else if(state === 'approx'){
     t.textContent = 'Using your approximate location';
     b.textContent = 'Worked out from your network address, accurate to around a city. ' +
       'Tap the map to set an exact starting point.';
@@ -813,9 +844,10 @@ function gpsBanner(state){
     b.textContent = 'This can take a few seconds on a computer without GPS hardware.';
     fix.hidden = true;
   } else if(state === 'timeout'){
-    t.textContent = 'Could not get a location';
-    b.textContent = 'Your computer has no GPS chip and the network lookup did not answer. ' +
-      'Tap the map to set a starting point, or try again.';
+    t.textContent = 'Your browser will not report a location';
+    b.textContent = 'Every method timed out. That usually means a VPN, an extension blocking ' +
+      'googleapis.com, or Windows location switched off for Chrome. Set your position on the map ' +
+      'instead and it will be remembered.';
     fix.textContent = 'Try again';
   } else if(state === 'denied'){
     t.textContent = 'Location is blocked';
@@ -832,6 +864,8 @@ function gpsBanner(state){
     fix.textContent = 'Turn on';
   }
   fix.onclick = () => { fix.textContent = 'Locating…'; useGps(); };
+  const pick = $('gpsPick');
+  if(pick){ pick.hidden = false; pick.onclick = beginPickStart; }
 }
 function checkGpsPermission(){
   if(!navigator.geolocation){ gpsBanner('unsupported'); return; }
@@ -842,7 +876,7 @@ function checkGpsPermission(){
     }).catch(() => gpsBanner('prompt'));
   } else gpsBanner('prompt');
 }
-async function locateNow(makeStart){
+async function locateNow(makeStart, force){
   if(!navigator.geolocation){ gpsBanner('unsupported'); return false; }
   gpsBanner('searching');
   try{
@@ -851,16 +885,18 @@ async function locateNow(makeStart){
     rememberFix(me.lat, me.lon);
     $('locBtn').classList.add('live');
     gpsBanner('granted');
-    if(makeStart) setPlace('from', { name:'Your location', detail:'', lat:me.lat, lon:me.lon });
+    if(makeStart && (force || !userStart))
+      setPlace('from', { name:'Your location', detail:'', lat:me.lat, lon:me.lon }, true);
     return true;
   }catch(e){
     if(e && e.code === 1){ gpsBanner('denied'); return false; }
     // no GPS hardware: fall back to the network address rather than giving up
     try{
       const ip = await ipLocate();
+      if(userStart && !force){ gpsBanner('approx'); return false; }   // do not hijack their choice
       showMe(ip.lat, ip.lon);
       if(makeStart) setPlace('from',
-        { name:'Approximate location' + (ip.city ? ' · ' + ip.city : ''), detail:'', lat:ip.lat, lon:ip.lon });
+        { name:'Approximate location' + (ip.city ? ' · ' + ip.city : ''), detail:'', lat:ip.lat, lon:ip.lon }, true);
       gpsBanner('approx');
       return true;
     }catch(e2){ gpsBanner('timeout'); return false; }
@@ -868,13 +904,23 @@ async function locateNow(makeStart){
 }
 const PROVISIONAL = /^(Last known|Approximate|Your) location/i;
 function adoptStart(name, lat, lon, fly){
-  if(trip.from && !PROVISIONAL.test(trip.from.name)) return;   // never overwrite a real choice
+  if(userStart) return;                                        // the user chose one: leave it alone
+  if(trip.from && !PROVISIONAL.test(trip.from.name)) return;
   trip.from = { name, detail:'', lat, lon };
   $('fromInput').value = name;
   if(trip.to) planAll();
   else if(fly && !trip.to) map.flyTo({ center:[lon, lat], zoom:13, speed:1.2 });
 }
 function initialLocate(){
+  const home = savedHome();
+  if(home){
+    showMe(home.lat, home.lon);
+    userStart = true;                        // a position they set outranks any guess
+    setPlace('from', { name:'My position', detail:'set by hand', lat:home.lat, lon:home.lon });
+    gpsBanner('manual');
+    if(!trip.to) map.flyTo({ center:[home.lon, home.lat], zoom:14, speed:1.2 });
+    return;
+  }
   const last = lastFix();
   if(last){ showMe(last.lat, last.lon); adoptStart('Last known location', last.lat, last.lon, true); }
 
@@ -882,7 +928,7 @@ function initialLocate(){
   // so the app is usable immediately instead of after a GPS timeout
   if(!last){
     ipLocate().then(ip => {
-      if(me) return;                                  // a real fix already landed
+      if(me || userStart) return;                     // a real fix, or the user's own choice, already landed
       showMe(ip.lat, ip.lon);
       adoptStart('Approximate location' + (ip.city ? ' · ' + ip.city : ''), ip.lat, ip.lon, true);
       gpsBanner('approx');
@@ -895,7 +941,7 @@ function initialLocate(){
   });
 }
 async function useGps(){
-  const got = await locateNow(true);
+  const got = await locateNow(true, true);
   if(!got) toast('No location came back. Tap the map to set your starting point instead.', 6000);
 }
 function toggleFollow(){

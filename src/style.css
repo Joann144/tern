@@ -65,8 +65,11 @@ svg{width:18px;height:18px;flex:none}
 #gpsbar div{flex:1;min-width:0;display:flex;flex-direction:column}
 #gpsbar b{font-size:12.5px;font-weight:650}
 #gpsbar span{font-size:11.5px;color:var(--ink2);line-height:1.45}
-#gpsFix{height:32px;padding:0 13px;border:0;border-radius:var(--rad-pill);background:var(--grad);
-  color:#fff;font-size:12px;font-weight:650;cursor:pointer;flex:none}
+.gpsbtns{display:flex;flex-direction:column;gap:5px;flex:none}
+#gpsFix,#gpsPick{height:30px;padding:0 12px;border:0;border-radius:var(--rad-pill);
+  font-size:11.5px;font-weight:650;cursor:pointer;white-space:nowrap}
+#gpsFix{background:var(--grad);color:#fff}
+#gpsPick{background:var(--solid);color:var(--accent);border:1px solid var(--accent)}
 
 /* ── from / to ──────────────────────────────────────────── */
 .fields{position:relative;display:flex;gap:10px;align-items:stretch;padding:8px 8px 8px 11px;
