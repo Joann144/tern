@@ -20,7 +20,7 @@ if(theme !== 'dark') theme = 'light';
 let units    = store.get('tern.units', 'imperial');
 let ttKey    = store.get('tern.ttkey', '');
 let mode     = store.get('tern.mode', 'drive');
-let trafficOn= store.get('tern.traffic', '0') === '1';
+let trafficOn= store.get('tern.traffic', '1') === '1';
 document.documentElement.setAttribute('data-theme', theme);
 
 const IMP = () => units === 'imperial';
@@ -175,10 +175,28 @@ function addLayers(){
       paint:{ 'circle-radius':4.5, 'circle-color':'#ffffff',
         'circle-stroke-color':['get','color'], 'circle-stroke-width':2.5 } });
   }
+  if(!map.getSource('inc')){
+    map.addSource('inc', { type:'geojson', data: EMPTY });
+    map.addLayer({ id:'inc-line', type:'line', source:'inc',
+      filter:['==',['geometry-type'],'LineString'],
+      layout:{ 'line-cap':'round' },
+      paint:{ 'line-color':['get','col'], 'line-opacity':.95,
+        'line-width':['interpolate',['linear'],['zoom'],9,3,16,7] } });
+    map.addLayer({ id:'inc-pt', type:'circle', source:'inc',
+      filter:['==',['geometry-type'],'Point'],
+      paint:{ 'circle-radius':['interpolate',['linear'],['zoom'],9,4,16,8],
+        'circle-color':['get','col'], 'circle-stroke-color':'#fff', 'circle-stroke-width':2 } });
+    ['inc-line','inc-pt'].forEach(id => {
+      map.on('click', id, e => showIncident(e.features[0]));
+      map.on('mouseenter', id, () => map.getCanvas().style.cursor = 'pointer');
+      map.on('mouseleave', id, () => map.getCanvas().style.cursor = '');
+    });
+  }
+  if(incData && map.getSource('inc')) map.getSource('inc').setData(incData);
   if(trafficOn && ttKey) addTraffic();
   if(current) paintRoute(current);
 }
-map.on('load', () => { addLayers(); wireMap(); initialLocate(); });
+map.on('load', () => { addLayers(); wireMap(); watchIncidents(); initialLocate(); loadIncidents(true); });
 
 /* ── places ───────────────────────────────────────────────── */
 let abortGeo;
@@ -237,8 +255,39 @@ function setPlace(slot, place){
     .setLngLat([place.lon, place.lat]).addTo(map);
   if(slot === 'from') markFrom = m; else markTo = m;
   store.set('tern.' + slot, JSON.stringify(place));
-  if(trip.from && trip.to) planAll();
-  else map.flyTo({ center:[place.lon, place.lat], zoom: Math.max(map.getZoom(), 14.5), speed:1.3 });
+  if(slot === 'to') rememberRecent(place);
+  if(trip.from && trip.to){ planAll(); return; }
+  map.flyTo({ center:[place.lon, place.lat], zoom: Math.max(map.getZoom(), 14.5), speed:1.3 });
+  if(slot === 'to' && !trip.from) needStart();
+}
+
+/* ── no start point yet: ask for one, loudly and usefully ─── */
+function needStart(){
+  $('live').hidden = true;
+  $('results').innerHTML =
+    '<div class="empty">' +
+      '<div class="eicon">' + svg('<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/>' +
+        '<path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/>', 2) + '</div>' +
+      '<h3>Where are you starting from?</h3>' +
+      '<p>Pick a starting point and all four travel times appear at once.</p>' +
+      '<div class="go" style="margin-top:14px">' +
+        '<button class="btn primary" id="startHere">Use my location</button></div>' +
+      '<div class="tips"><span>Or tap anywhere on the map to set it</span></div>' +
+    '</div>';
+  const b = $('startHere');
+  if(b) b.onclick = () => { b.textContent = 'Locating…'; useGps(); };
+  if(navigator.geolocation && navigator.permissions && navigator.permissions.query){
+    navigator.permissions.query({ name:'geolocation' })
+      .then(st => { if(st.state === 'granted') useGps(); }).catch(() => {});
+  }
+}
+
+/* ── recent destinations ──────────────────────────────────── */
+function recents(){ try{ return JSON.parse(store.get('tern.recent', '[]')) || []; }catch(e){ return []; } }
+function rememberRecent(p){
+  const list = recents().filter(x => Math.abs(x.lat - p.lat) > 1e-5 || Math.abs(x.lon - p.lon) > 1e-5);
+  list.unshift({ name:p.name, detail:p.detail || '', lat:p.lat, lon:p.lon });
+  store.set('tern.recent', JSON.stringify(list.slice(0, 6)));
 }
 
 /* ── routers, all returning one shape ─────────────────────── */
@@ -428,12 +477,27 @@ function emptyState(){
       '<h3>Where are you going?</h3>' +
       '<p>Type a destination above, or tap anywhere on the map. ' +
       'We will price up driving, transit, cycling and walking side by side.</p>' +
+      recentHtml() +
       '<div class="tips">' +
         '<span>Tap the map to drop a point</span>' +
-        '<span>Use the crosshair for your location</span>' +
         '<span>Transit shows live delays</span>' +
       '</div>' +
     '</div>';
+  wireRecents();
+}
+function recentHtml(){
+  const list = recents();
+  if(!list.length) return '';
+  return '<div class="recents"><div class="rhead">Recent</div>' +
+    list.map((r,i) => '<button class="rec" data-r="' + i + '">' +
+      svg('<path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="9"/>', 1.8) +
+      '<span>' + esc(r.name) + '</span></button>').join('') + '</div>';
+}
+function wireRecents(){
+  const list = recents();
+  document.querySelectorAll('.rec').forEach(el => el.addEventListener('click', () => {
+    sugSlot = 'to'; setPlace('to', list[+el.dataset.r]);
+  }));
 }
 function renderError(m, e){
   const why = e.message === 'NO_TRANSIT'
@@ -759,8 +823,12 @@ function startNav(it){
   nav = { steps: it.legs[0].steps, i:0, total: it.duration, dist: it.distance, via: it.via || '' };
   $('nav').hidden = false;
   $('panel').classList.add('hid');
-  map.easeTo({ pitch:60, zoom:17, duration:900 });
+  const first = nav.steps.find(s => s.lat != null);
+  const centre = me ? [me.lon, me.lat] : (first ? [first.lon, first.lat] : null);
+  map.easeTo(Object.assign({ pitch:60, zoom:17, duration:900 },
+    centre ? { center: centre } : {}));
   if(!following) toggleFollow();
+  if(!me) toast('No GPS fix yet, so the view starts at the first turn. Allow location to follow along.', 5500);
   paintNav();
 }
 function endNav(){
@@ -811,8 +879,8 @@ function advance(){
 /* ── traffic ──────────────────────────────────────────────── */
 const QUOTA = 2500;
 const qKey = () => 'tern.tt.' + new Date().toISOString().slice(0,10);
-const qUsed = () => +(store.get(qKey(), '0')) || 0;
-function qBump(){ const n = qUsed() + 1; store.set(qKey(), String(n)); stamp(); return n; }
+const quotaUsed = () => +(store.get(qKey(), '0')) || 0;
+function qBump(){ const n = quotaUsed() + 1; store.set(qKey(), String(n)); stamp(); return n; }
 function addTraffic(){
   if(!ttKey || map.getSource('flow')) return;
   const st = theme === 'dark' ? 'relative0-dark' : 'relative0';
@@ -826,8 +894,82 @@ function removeTraffic(){
   if(map.getLayer('flow')) map.removeLayer('flow');
   if(map.getSource('flow')) map.removeSource('flow');
 }
+const INC_CAT = { 0:['Unknown','#8b949f'], 1:['Accident','#dc3545'], 2:['Fog','#8b949f'],
+  3:['Hazard','#c2800b'], 4:['Rain','#3d8fe8'], 5:['Ice','#3dd6e8'], 6:['Traffic jam','#c2800b'],
+  7:['Lane closed','#e8743d'], 8:['Road closed','#dc3545'], 9:['Road works','#c2800b'],
+  10:['Wind','#8b949f'], 11:['Flooding','#3d8fe8'], 14:['Broken down vehicle','#e8743d'] };
+const INC_MAG = { 0:'Unknown', 1:'Minor', 2:'Moderate', 3:'Major', 4:'Closure' };
+let incData = null, incBusy = false, incTimer = null, lastInc = 0;
+
+function bboxKm2(b){
+  const dLat = (b.getNorth() - b.getSouth()) * 111.32;
+  const dLon = (b.getEast() - b.getWest()) * 111.32 *
+    Math.cos((b.getNorth() + b.getSouth()) / 2 * Math.PI / 180);
+  return Math.abs(dLat * dLon);
+}
+async function loadIncidents(quiet){
+  if(!ttKey || !trafficOn || incBusy) return;
+  if(document.hidden) return;
+  if(!navigator.onLine) return;
+  if(quotaUsed() >= QUOTA){ if(!quiet) toast('TomTom free tier used up for today'); return; }
+  if(!map.getZoom || map.getZoom() < 9){ if(!quiet) toast('Zoom in to load live incidents'); return; }
+  const b = map.getBounds();
+  if(bboxKm2(b) > 9000){ if(!quiet) toast('Zoom in a little, that area is too large for the feed'); return; }
+  incBusy = true;
+  const fields = '{incidents{type,geometry{type,coordinates},properties{iconCategory,magnitudeOfDelay,' +
+    'events{description,code},startTime,endTime,from,to,length,delay,roadNumbers}}}';
+  const url = 'https://api.tomtom.com/traffic/services/5/incidentDetails?key=' + encodeURIComponent(ttKey) +
+    '&bbox=' + [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].map(v => v.toFixed(6)).join(',') +
+    '&fields=' + fields + '&language=en-GB&timeValidityFilter=present';
+  try{
+    qBump();
+    const j = await NET.json(url, null, { tries:0, ms:12000, label:'Traffic' });
+    const feats = (j.incidents || []).filter(Boolean).map(f => {
+      const p = f.properties || {}, cat = INC_CAT[p.iconCategory] || INC_CAT[0];
+      return { type:'Feature', geometry:f.geometry, properties:{
+        col:cat[1], cat:cat[0], mag: INC_MAG[p.magnitudeOfDelay] || 'Unknown',
+        desc:(p.events && p.events[0] && p.events[0].description) || cat[0],
+        from:p.from || '', to:p.to || '', delay:p.delay || 0, len:p.length || 0,
+        road:(p.roadNumbers || []).join(', '), end:p.endTime || '' } };
+    });
+    incData = { type:'FeatureCollection', features: feats };
+    if(map.getSource('inc')) map.getSource('inc').setData(incData);
+    lastInc = Date.now(); stamp();
+    if(!quiet) toast(feats.length ? feats.length + ' live incidents in view' : 'No incidents reported in view');
+  }catch(e){ if(!quiet) toast(e.message, 5000); }
+  finally{ incBusy = false; }
+}
+function clearIncidents(){
+  incData = null; lastInc = 0;
+  if(map.getSource('inc')) map.getSource('inc').setData(EMPTY);
+  stamp();
+}
+function showIncident(f){
+  if(!f) return;
+  const p = f.properties || {};
+  $('live').hidden = false;
+  $('live').innerHTML = '<div class="livehead"><span class="dotlive"></span>' +
+    esc(p.cat) + ' · ' + esc(p.mag) + '</div>' +
+    '<div style="font-size:14px;font-weight:600;margin-bottom:4px">' + esc(p.desc) + '</div>' +
+    (p.from || p.to ? '<div class="dep"><span class="to">' + esc(p.from) +
+      (p.to ? ' → ' + esc(p.to) : '') + '</span></div>' : '') +
+    (p.road ? '<div class="dep"><b>Road</b><span class="to">' + esc(p.road) + '</span></div>' : '') +
+    (p.delay ? '<div class="dep"><b>Delay</b><span class="to">' + fmtDur(p.delay) + '</span></div>' : '') +
+    (p.len ? '<div class="dep"><b>Length</b><span class="to">' + fmtDist(p.len) + '</span></div>' : '') +
+    (p.end ? '<div class="dep"><b>Clears</b><span class="to">' +
+      esc(new Date(p.end).toLocaleString()) + '</span></div>' : '');
+}
+let incDeb;
+function watchIncidents(){
+  map.on('moveend', () => { clearTimeout(incDeb); incDeb = setTimeout(() => loadIncidents(true), 800); });
+  incTimer = setInterval(() => loadIncidents(true), 120000);
+  document.addEventListener('visibilitychange', () => { if(!document.hidden && trafficOn) loadIncidents(true); });
+}
 function stamp(){
-  $('trafficStamp').textContent = (trafficOn && ttKey) ? qUsed() + '/' + QUOTA + ' traffic calls today' : '';
+  const bits = [];
+  if(lastInc) bits.push('traffic ' + clock(lastInc));
+  if(trafficOn && ttKey) bits.push(quotaUsed() + '/' + QUOTA + ' today');
+  $('trafficStamp').textContent = bits.join('  ·  ');
 }
 
 /* ── system check ─────────────────────────────────────────── */
@@ -850,11 +992,11 @@ const SERVICES = [
       const n = (j.itineraries || []).length;
       return n ? n + ' itinerar' + (n===1?'y':'ies') + ' found, feed covers this area' : 'reachable, but no transit feed covers this area'; } },
   { id:'traffic', run: async () => {
-      if(!ttKey) throw new Error('SOFT:no TomTom key saved yet');
+      if(!ttKey) throw new Error('SOFT:paste a key below, it is then remembered for good');
       const u = 'https://api.tomtom.com/traffic/services/5/incidentDetails?key=' + encodeURIComponent(ttKey) +
         '&bbox=-80.90,35.18,-80.78,35.28&fields={incidents{type}}&language=en-GB&timeValidityFilter=present';
       const j = await NET.json(u, null, { tries:0, ms:12000, label:'TomTom' });
-      return ((j.incidents || []).length) + ' incidents near Charlotte'; } },
+      return ((j.incidents || []).length) + ' incidents nearby · key saved in this browser'; } },
   { id:'gps', run: () => new Promise((ok, no) => {
       if(!navigator.geolocation) return no(new Error('not supported here'));
       navigator.geolocation.getCurrentPosition(
@@ -931,7 +1073,7 @@ $('trafficBtn').onclick = () => {
   if(!ttKey){ openDiag(); toast('Add a free TomTom key to switch traffic on', 4500); return; }
   trafficOn = !trafficOn; store.set('tern.traffic', trafficOn ? '1' : '0');
   $('trafficBtn').classList.toggle('on', trafficOn);
-  if(trafficOn) addTraffic(); else removeTraffic();
+  if(trafficOn){ addTraffic(); loadIncidents(false); } else { removeTraffic(); clearIncidents(); }
   stamp();
 };
 function openDiag(){ $('diag').hidden = false; systemCheck(); }
@@ -948,8 +1090,9 @@ $('saveKey').onclick = () => {
 };
 function keyHint(){
   $('keyHint').textContent = ttKey
-    ? 'Saved in this browser only. Restrict the key to this domain in your TomTom settings.'
-    : 'Without a key the map, search, routing and GPS all still work. Only live traffic is off.';
+    ? 'Saved in this browser. It stays until you clear site data, you will not be asked again.'
+    : 'Paste it once and it is remembered. Without one, everything except live traffic still works.';
+  $('keyHint').className = 'hint' + (ttKey ? ' ok' : '');
 }
 $('navStop').onclick = endNav;
 $('navPrev').onclick = () => navStep(-1);
@@ -965,6 +1108,18 @@ addEventListener('offline', () => toast('You are offline. Tiles, search and rout
 addEventListener('online', () => toast('Back online', 2200));
 addEventListener('beforeunload', () => { if(watch != null && navigator.geolocation) navigator.geolocation.clearWatch(watch); });
 
+function adoptKey(raw){
+  const v = String(raw || '').trim();
+  if(!v || v === ttKey) return;
+  ttKey = v; store.set('tern.ttkey', ttKey);
+  keyHint(); stamp();
+  trafficOn = true; store.set('tern.traffic', '1');
+  $('trafficBtn').classList.add('on');
+  removeTraffic(); addTraffic(); loadIncidents(true);
+}
+$('ttKey').addEventListener('input', () => adoptKey($('ttKey').value));
+$('ttKey').addEventListener('blur',  () => adoptKey($('ttKey').value));
+$('ttKey').addEventListener('paste', () => setTimeout(() => adoptKey($('ttKey').value), 0));
 $('ttKey').value = ttKey; keyHint(); stamp();
 emptyState();
 $('trafficBtn').classList.toggle('on', trafficOn && !!ttKey);

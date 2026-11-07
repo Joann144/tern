@@ -52,8 +52,9 @@ class FakeMap {
   addLayer(l){ this.lay[l.id]=l; } getLayer(id){ return this.lay[id]; } removeLayer(id){ delete this.lay[id]; }
   getStyle(){ return { layers:[{id:'water',type:'fill'},{id:'poi-label',type:'symbol'}] }; }
   getCenter(){ return {lat:35.2271,lng:-80.8431}; } getZoom(){ return 12; } getPitch(){ return this.pitch; }
+  getBounds(){ return { getWest:()=>-80.95, getSouth:()=>35.15, getEast:()=>-80.75, getNorth:()=>35.31 }; }
   getBearing(){ return 0; }
-  flyTo(){} easeTo(o){ if(o&&o.pitch!=null) this.pitch=o.pitch; } fitBounds(o){ this._fit=o; }
+  flyTo(){} easeTo(o){ if(o&&o.pitch!=null) this.pitch=o.pitch; if(o&&o.center) this._ease=o; } fitBounds(o){ this._fit=o; }
   setStyle(){} queryRenderedFeatures(){ return []; }
 }
 globalThis.maplibregl = { Map: FakeMap,
@@ -138,7 +139,15 @@ const MOCK = {
       place:{ departure:'2026-11-07T17:03:00Z', scheduledDeparture:'2026-11-07T17:05:00Z' } },
     { routeShortName:'9', headsign:'Airport', mode:'BUS', realTime:true, tripCancelled:true,
       place:{ departure:'2026-11-07T17:10:00Z', scheduledDeparture:'2026-11-07T17:10:00Z' } } ] },
-  tomtom:{ incidents:[{type:'Feature'},{type:'Feature'},{type:'Feature'}] },
+  tomtom:{ incidents:[
+    { type:'Feature', geometry:{type:'LineString',coordinates:[[-80.84,35.22],[-80.839,35.221]]},
+      properties:{ iconCategory:8, magnitudeOfDelay:4, events:[{description:'Closed'}],
+        from:'S Tryon St', to:'E Morehead St', length:238, delay:0, roadNumbers:['US-74'],
+        endTime:'2026-11-07T22:00:00Z' } },
+    { type:'Feature', geometry:{type:'Point',coordinates:[-80.85,35.23]},
+      properties:{ iconCategory:1, magnitudeOfDelay:3, events:[{description:'Accident'}],
+        from:'I-277', length:120, delay:540, roadNumbers:['I-277'] } },
+    null ] },
   style:{ layers:new Array(42).fill({}) }
 };
 const seen = [];
@@ -161,6 +170,9 @@ globalThis.fetch = async (url, opt) => {
 const probe = `;globalThis.T = { fmtDist, fmtDur, fmtShort, decodePoly, geocode, routeDrive, routeValhalla,
   routeTransit, planMode, planAll, renderOptions, paintRoute, systemCheck, startNav, navStep, endNav, advance,
   setPlace, trip, SERVICES, hav, addLayers, paintAlts, viaLabel, departures, refreshDepartures, emptyState,
+  needStart, recents, rememberRecent, adoptKey, get ttKeyNow(){return ttKey},
+  loadIncidents, showIncident, clearIncidents, get incNow(){return incData},
+  set trafficFlag(v){trafficOn=v},
   setOptions:(o,c)=>{ options=o; current=c; },
   get options(){return options}, get current(){return current}, get nav(){return nav}, set nav(v){nav=v},
   get map(){return map}, get me(){return me}, set me(v){me=v}, set following(v){following=v},
@@ -265,6 +277,29 @@ const eh = document.getElementById('results').innerHTML;
 chk(/Where are you going/.test(eh) && /tap anywhere on the map/i.test(eh), 'empty state guides the user');
 console.log('\n── empty state present');
 
+/* ── pasting the key is enough, no button press ───────────── */
+console.log('\n── traffic key persistence');
+T.adoptKey('  PASTED-KEY-123  ');
+console.log('   after paste, in use: ' + T.ttKeyNow + ' | stored: ' + localStorage.getItem('tern.ttkey'));
+chk(T.ttKeyNow === 'PASTED-KEY-123', 'key trimmed and adopted on paste alone');
+chk(localStorage.getItem('tern.ttkey') === 'PASTED-KEY-123', 'key written to storage immediately');
+chk(localStorage.getItem('tern.traffic') === '1', 'traffic switched on when a key arrives');
+
+/* ── destination with no start must prompt, not stall ─────── */
+T.trip.from = null;
+T.setPlace('to', { name:'Freedom Park', lat:B.lat, lon:B.lon });
+const ns = document.getElementById('results').innerHTML;
+console.log('\n── destination set, no start point');
+console.log('   panel: ' + (/Where are you starting from/.test(ns) ? 'prompts for a start point' : 'NOTHING SHOWN'));
+chk(/Where are you starting from/.test(ns), 'prompts for a start instead of stalling silently');
+chk(/Use my location/.test(ns), 'offers a one-tap location button');
+
+/* ── recent destinations ──────────────────────────────────── */
+const rec = T.recents();
+console.log('\n── recents: ' + rec.map(r => r.name).join(', '));
+chk(rec.length >= 1 && rec[0].name === 'Freedom Park', 'destination remembered for one-tap reuse');
+T.trip.from = { name:'Your location', lat:A.lat, lon:A.lon };
+
 /* ── all four modes in parallel ───────────────────────────── */
 console.log('\n── planning all modes');
 T.setPlace('from', { name:'Your location', lat:A.lat, lon:A.lon });
@@ -305,6 +340,26 @@ const altData = T.map.src['alts']._data;
 console.log('\n── alternatives on the map: ' + altData.features.length + ' greyed, 1 highlighted');
 chk(altData.features.length===2, 'the two unchosen routes are drawn greyed, got ' + altData.features.length);
 
+/* ── live traffic incidents and closures ──────────────────── */
+console.log('\n── traffic incidents');
+T.trafficFlag = true;
+await T.loadIncidents(true);
+const inc = T.incNow;
+console.log('   parsed ' + inc.features.length + ' incidents (one null dropped)');
+inc.features.forEach(f => console.log('   • ' + f.properties.cat + ' · ' + f.properties.mag +
+  ' · ' + f.properties.desc + ' · ' + (f.properties.road || '-') + ' · ' + f.properties.col));
+chk(inc.features.length === 2, 'two incidents parsed, got ' + inc.features.length);
+chk(inc.features[0].properties.cat === 'Road closed', 'closure category mapped');
+chk(inc.features[1].properties.cat === 'Accident', 'accident category mapped');
+chk(T.map.src['inc']._data.features.length === 2, 'incidents pushed to the map source');
+chk(['inc-line','inc-pt'].every(l => T.map.lay[l]), 'incident layers registered');
+T.showIncident(inc.features[0]);
+const ih = document.getElementById('live').innerHTML;
+chk(/Road closed/.test(ih) && /US-74/.test(ih), 'clicking an incident shows its detail');
+console.log('   detail card renders road and category');
+T.clearIncidents();
+chk(T.map.src['inc']._data.features.length === 0, 'turning traffic off clears incidents');
+
 /* ── no-transit path ──────────────────────────────────────── */
 failTransit = true;
 let msg='';
@@ -315,7 +370,17 @@ failTransit = false;
 
 /* ── turn by turn ─────────────────────────────────────────── */
 console.log('\n── navigation');
+T.me = null;
 T.startNav(d);
+const camNoGps = T.map._ease || null;
+T.endNav();
+T.me = { lat:A.lat, lon:A.lon };
+T.startNav(d);
+const camGps = T.map._ease || null;
+console.log('   camera, no GPS -> ' + (camNoGps && camNoGps.center ? camNoGps.center.map(v=>v.toFixed(4)).join(', ') : 'NOT CENTRED'));
+console.log('   camera, GPS fix -> ' + (camGps && camGps.center ? camGps.center.map(v=>v.toFixed(4)).join(', ') : 'NOT CENTRED'));
+chk(camNoGps && camNoGps.center, 'Start centres on the first turn when there is no fix');
+chk(camGps && camGps.center && Math.abs(camGps.center[1] - A.lat) < 1e-6, 'Start centres on you when there is a fix');
 console.log('   start: step ' + (T.nav.i+1) + ' — ' + E['navInstr'].textContent + ' in ' + E['navDist'].textContent);
 console.log('   arrive ' + E['navEta'].textContent + ', left ' + E['navLeft'].textContent);
 T.navStep(1);
