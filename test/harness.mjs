@@ -35,7 +35,8 @@ globalThis.addEventListener = () => {};
 globalThis.innerWidth = 1280; globalThis.innerHeight = 800;
 globalThis.location = { protocol:'https:' };
 const LS = {};
-globalThis.localStorage = { getItem:k=>k in LS?LS[k]:null, setItem:(k,v)=>LS[k]=String(v) };
+globalThis.localStorage = { getItem:k=>k in LS?LS[k]:null, setItem:(k,v)=>LS[k]=String(v),
+  removeItem:k=>{ delete LS[k]; } };
 Object.defineProperty(globalThis, 'navigator', { configurable:true, writable:true, value:{
   onLine:true,
   geolocation:{
@@ -174,6 +175,8 @@ globalThis.fetch = async (url, opt) => {
   else if(u.includes('transitous')) body = failTransit ? { itineraries:[] } : MOCK.motis;
   else if(u.includes('tomtom')) body = MOCK.tomtom;
   else if(u.includes('openfreemap')) body = MOCK.style;
+  else if(u.includes('ipwho.is')) body = { latitude:35.2271, longitude:-80.8431, city:'Charlotte', region:'North Carolina' };
+  else if(u.includes('ipapi.co')) body = { latitude:35.3, longitude:-80.9, city:'Backup City' };
   globalThis.__last = u;
   return { ok:true, status:200, json: async () => body };
 };
@@ -183,7 +186,7 @@ const probe = `;globalThis.T = { fmtDist, fmtDur, fmtShort, decodePoly, geocode,
   setPlace, trip, SERVICES, hav, addLayers, paintAlts, viaLabel, departures, refreshDepartures, emptyState,
   needStart, recents, rememberRecent, adoptKey, get ttKeyNow(){return ttKey},
   loadIncidents, showIncident, clearIncidents, get incNow(){return incData},
-  gpsBanner, recentreNav, arrive, paintNav, requestFix, locateNow, lastFix,
+  gpsBanner, recentreNav, arrive, paintNav, requestFix, locateNow, lastFix, ipLocate, adoptStart,
   set trafficFlag(v){trafficOn=v},
   setOptions:(o,c)=>{ options=o; current=c; },
   get options(){return options}, get current(){return current}, get nav(){return nav}, set nav(v){nav=v},
@@ -448,12 +451,26 @@ chk(geo.calls.join(',') === 'precise,coarse', 'tries precise first, then coarse'
 
 geo.mode = 'timeout'; geo.calls = [];
 const got2 = await T.locateNow(false);
-console.log('   both time out -> located: ' + got2 +
+console.log('   GPS times out -> located: ' + got2 +
   ' | banner: "' + document.getElementById('gpsTitle').textContent + '"');
-chk(got2 === false, 'reports failure when nothing answers');
+chk(got2 === true, 'a GPS timeout now falls through to the network, not failure');
+chk(/approximate/i.test(document.getElementById('gpsTitle').textContent),
+    'the approximation is declared, not passed off as exact');
+
+// everything unavailable: then, and only then, report failure honestly
+const realFetch2 = globalThis.fetch;
+globalThis.fetch = async (u, o) => {
+  if(String(u).includes('ipwho.is') || String(u).includes('ipapi.co')) throw new Error('offline');
+  return realFetch2(u, o);
+};
+const got3 = await T.locateNow(false);
+console.log('   GPS and network both fail -> located: ' + got3 +
+  ' | banner: "' + document.getElementById('gpsTitle').textContent + '"');
+chk(got3 === false, 'reports failure only when nothing at all answers');
 chk(/Could not get a location/.test(document.getElementById('gpsTitle').textContent),
-    'timeout is explained, not silent');
-chk(document.getElementById('gpsbar').hidden === false, 'banner stays visible on timeout');
+    'total failure is explained, not silent');
+chk(document.getElementById('gpsbar').hidden === false, 'banner stays visible on total failure');
+globalThis.fetch = realFetch2;
 
 geo.mode = 'denied'; geo.calls = [];
 await T.locateNow(false);
@@ -461,6 +478,29 @@ console.log('   denied -> attempts: ' + geo.calls.join(',') +
   ' | banner: "' + document.getElementById('gpsTitle').textContent + '"');
 chk(geo.calls.length === 1, 'does not retry when the user denied it');
 chk(/blocked/i.test(document.getElementById('gpsTitle').textContent), 'denial explained separately');
+
+// no GPS at all: the network address still gives a usable start
+geo.mode = 'timeout';
+localStorage.removeItem('tern.lastfix');
+T.trip.from = null;
+const okIp = await T.locateNow(true);
+console.log('   no GPS at all -> located via network: ' + okIp +
+  ' | start: "' + document.getElementById('fromInput').value + '"' +
+  ' | banner: "' + document.getElementById('gpsTitle').textContent + '"');
+chk(okIp === true, 'network address rescues a machine with no GPS');
+chk(/Approximate location/.test(document.getElementById('fromInput').value), 'start is labelled approximate, not pretended exact');
+chk(/Charlotte/.test(document.getElementById('fromInput').value), 'city named so it is checkable');
+
+const ip = await T.ipLocate();
+console.log('   ipLocate -> ' + ip.city + ' ' + ip.lat + ', ' + ip.lon);
+chk(Math.abs(ip.lat - 35.2271) < 1e-6, 'primary network provider parsed');
+
+// a real choice must never be overwritten by a late fix
+T.trip.from = { name:'Charlotte Transportation Center', lat:35.2234, lon:-80.8382 };
+T.adoptStart('Your location', 1, 2, false);
+console.log('   late GPS vs a chosen start -> kept "' + T.trip.from.name + '"');
+chk(T.trip.from.name === 'Charlotte Transportation Center', 'a chosen start is never clobbered');
+T.trip.from = { name:'Your location', lat:A.lat, lon:A.lon };
 
 geo.mode = 'ok';
 await T.locateNow(false);

@@ -19,9 +19,20 @@ Built on OpenStreetMap data through open services, with optional live traffic fr
 | Alternative routes, labelled by road | OSRM and Valhalla | no |
 | Side-by-side time for all four modes | all of the above, in parallel | no |
 | GPS position and follow mode | browser Geolocation | no |
+| Approximate position when there is no GPS | ipwho.is, then ipapi.co | no |
 | Navigation HUD, ETA, distance, speed | computed locally | no |
 | Live traffic flow | TomTom raster flow tiles | yes |
 | Incidents and road closures | TomTom Incident Details v5 | yes |
+
+## Locating you
+
+Three tiers, in order, so a machine with no GPS chip still works:
+
+1. Precise browser geolocation, tried briefly
+2. Coarse browser geolocation, which uses wifi and IP positioning
+3. Approximate position from your network address
+
+Tier three resolves in well under a second, so the app fills in a usable starting point immediately rather than making you wait out a GPS timeout, and upgrades itself to an exact position if one ever arrives. It is always labelled **Approximate location** with the city named, never passed off as exact, and a start you chose yourself is never overwritten. Tier three sends a request to a third-party service which reads your network address; everything else in the app works without it.
 
 ## Live data
 

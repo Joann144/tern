@@ -1355,6 +1355,17 @@ function requestFix(){
     }, { enableHighAccuracy:true, timeout:7000, maximumAge:60000 });
   });
 }
+async function ipLocate(){
+  const tryOne = async url => {
+    const j = await NET.json(url, null, { tries:0, ms:6000, label:'Network location' });
+    const lat = parseFloat(j.latitude != null ? j.latitude : j.lat);
+    const lon = parseFloat(j.longitude != null ? j.longitude : j.lon);
+    if(!isFinite(lat) || !isFinite(lon)) throw new Error('no coordinates');
+    return { lat, lon, city: j.city || '', region: j.region || j.region_name || '' };
+  };
+  try{ return await tryOne('https://ipwho.is/'); }
+  catch(e){ return await tryOne('https://ipapi.co/json/'); }
+}
 function rememberFix(lat, lon){ store.set('tern.lastfix', JSON.stringify({ lat, lon, t:Date.now() })); }
 function lastFix(){
   try{
@@ -1367,7 +1378,12 @@ function gpsBanner(state){
   const bar = $('gpsbar'), t = $('gpsTitle'), b = $('gpsBody'), fix = $('gpsFix');
   if(state === 'granted'){ bar.hidden = true; return; }
   bar.hidden = false; fix.hidden = false;
-  if(state === 'searching'){
+  if(state === 'approx'){
+    t.textContent = 'Using your approximate location';
+    b.textContent = 'Worked out from your network address, accurate to around a city. ' +
+      'Tap the map to set an exact starting point.';
+    fix.textContent = 'Try GPS';
+  } else if(state === 'searching'){
     t.textContent = 'Finding your location';
     b.textContent = 'This can take a few seconds on a computer without GPS hardware.';
     fix.hidden = true;
@@ -1413,25 +1429,44 @@ async function locateNow(makeStart){
     if(makeStart) setPlace('from', { name:'Your location', detail:'', lat:me.lat, lon:me.lon });
     return true;
   }catch(e){
-    gpsBanner(e && e.code === 1 ? 'denied' : 'timeout');
-    return false;
+    if(e && e.code === 1){ gpsBanner('denied'); return false; }
+    // no GPS hardware: fall back to the network address rather than giving up
+    try{
+      const ip = await ipLocate();
+      showMe(ip.lat, ip.lon);
+      if(makeStart) setPlace('from',
+        { name:'Approximate location' + (ip.city ? ' · ' + ip.city : ''), detail:'', lat:ip.lat, lon:ip.lon });
+      gpsBanner('approx');
+      return true;
+    }catch(e2){ gpsBanner('timeout'); return false; }
   }
+}
+const PROVISIONAL = /^(Last known|Approximate|Your) location/i;
+function adoptStart(name, lat, lon, fly){
+  if(trip.from && !PROVISIONAL.test(trip.from.name)) return;   // never overwrite a real choice
+  trip.from = { name, detail:'', lat, lon };
+  $('fromInput').value = name;
+  if(trip.to) planAll();
+  else if(fly && !trip.to) map.flyTo({ center:[lon, lat], zoom:13, speed:1.2 });
 }
 function initialLocate(){
   const last = lastFix();
-  if(last && !trip.from){
-    showMe(last.lat, last.lon);
-    trip.from = { name:'Last known location', detail:'', lat:last.lat, lon:last.lon };
-    $('fromInput').value = 'Last known location';
-    if(trip.to) planAll();
+  if(last){ showMe(last.lat, last.lon); adoptStart('Last known location', last.lat, last.lon, true); }
+
+  // approximate position from the network answers in well under a second,
+  // so the app is usable immediately instead of after a GPS timeout
+  if(!last){
+    ipLocate().then(ip => {
+      if(me) return;                                  // a real fix already landed
+      showMe(ip.lat, ip.lon);
+      adoptStart('Approximate location' + (ip.city ? ' · ' + ip.city : ''), ip.lat, ip.lon, true);
+      gpsBanner('approx');
+    }).catch(() => {});
   }
+
+  // and keep trying for a precise fix, which upgrades the start if it arrives
   locateNow(false).then(got => {
-    if(got && (!trip.from || /location$/i.test(trip.from.name))){
-      trip.from = { name:'Your location', detail:'', lat:me.lat, lon:me.lon };
-      $('fromInput').value = 'Your location';
-      if(trip.to) planAll();
-    }
-    if(got && !trip.to) map.flyTo({ center:[me.lon, me.lat], zoom:14, speed:1.2 });
+    if(got){ adoptStart('Your location', me.lat, me.lon, !trip.to); }
   });
 }
 async function useGps(){
