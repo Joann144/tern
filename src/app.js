@@ -7,7 +7,11 @@
 
 const $ = id => document.getElementById(id);
 const OFM = 'https://tiles.openfreemap.org';
-const STYLE = { light: OFM + '/styles/liberty', dark: OFM + '/styles/dark' };
+const SKINS = {
+  apple:  { map: OFM + '/styles/positron', dark:false },
+  google: { map: OFM + '/styles/liberty',  dark:false },
+  uber:   { map: OFM + '/styles/dark',     dark:true  }
+};
 const MOTIS = 'https://api.transitous.org';
 
 const store = {
@@ -15,12 +19,13 @@ const store = {
   set(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
 };
 
-let theme    = store.get('tern.theme', 'light');
+let skin     = store.get('tern.skin', 'apple');
+if(!SKINS[skin]) skin = 'apple';
 let units    = store.get('tern.units', 'imperial');
 let ttKey    = store.get('tern.ttkey', '');
 let mode     = store.get('tern.mode', 'drive');
 let trafficOn= store.get('tern.traffic', '0') === '1';
-document.documentElement.setAttribute('data-theme', theme);
+document.documentElement.setAttribute('data-skin', skin);
 
 const IMP = () => units === 'imperial';
 
@@ -118,7 +123,7 @@ try{
   if(!(probe.getContext('webgl2') || probe.getContext('webgl')))
     throw new Error('WebGL is unavailable. Turn on hardware acceleration, or use Chrome, Edge or Firefox.');
   map = new maplibregl.Map({
-    container:'map', style: STYLE[theme],
+    container:'map', style: SKINS[skin].map,
     center:[-80.8431, 35.2271], zoom: 12.4, pitch: 0,
     antialias:true, fadeDuration:110, maxTileCacheSize:520,
     attributionControl:false
@@ -148,7 +153,7 @@ function addLayers(){
     map.addSource('route', { type:'geojson', data: EMPTY });
     map.addLayer({ id:'route-case', type:'line', source:'route',
       layout:{ 'line-cap':'round','line-join':'round' },
-      paint:{ 'line-color': theme === 'dark' ? '#0b0d10' : '#ffffff',
+      paint:{ 'line-color': SKINS[skin].dark ? '#0b0d10' : '#ffffff',
         'line-width':['interpolate',['linear'],['zoom'],8,7,16,15] } }, firstSymbol());
     map.addLayer({ id:'route-line', type:'line', source:'route',
       filter:['!=',['get','walk'], true],
@@ -160,6 +165,13 @@ function addLayers(){
       layout:{ 'line-cap':'butt','line-join':'round' },
       paint:{ 'line-color':['get','color'], 'line-dasharray':[0.1,1.9],
         'line-width':['interpolate',['linear'],['zoom'],8,4,16,8] } }, firstSymbol());
+  }
+  if(!map.getSource('alts')){
+    map.addSource('alts', { type:'geojson', data: EMPTY });
+    map.addLayer({ id:'alts', type:'line', source:'alts',
+      layout:{ 'line-cap':'round','line-join':'round' },
+      paint:{ 'line-color': SKINS[skin].dark ? '#5b6675' : '#9aa4b2', 'line-width':5, 'line-opacity':.65 } },
+      map.getLayer('route-case') ? 'route-case' : firstSymbol());
   }
   if(!map.getSource('stops')){
     map.addSource('stops', { type:'geojson', data: EMPTY });
@@ -254,30 +266,41 @@ function osrmText(s){
     default: return (m.type ? m.type[0].toUpperCase() + m.type.slice(1) : 'Continue') + (mod ? ' ' + mod : '') + on;
   }
 }
+function viaLabel(steps){
+  const tally = {};
+  steps.forEach(s => { if(s.road) tally[s.road] = (tally[s.road] || 0) + (s.dist || 0); });
+  const best = Object.keys(tally).sort((x,y) => tally[y] - tally[x])[0];
+  return best ? 'via ' + best : '';
+}
 async function routeDrive(a, b){
   const url = 'https://router.project-osrm.org/route/v1/driving/' +
-    a.lon + ',' + a.lat + ';' + b.lon + ',' + b.lat + '?overview=full&geometries=geojson&steps=true';
+    a.lon + ',' + a.lat + ';' + b.lon + ',' + b.lat +
+    '?overview=full&geometries=geojson&steps=true&alternatives=3';
   const j = await NET.json(url, null, { tries:1, ms:15000, label:'Driving router' });
-  const r = (j.routes || [])[0];
-  if(!r) throw new Error('No driving route exists between those points');
-  const steps = [];
-  r.legs.forEach(l => l.steps.forEach(s => {
-    const m = s.maneuver || {};
-    steps.push({ text: osrmText(s), dist: s.distance, road: s.name || '',
-      lon: m.location ? m.location[0] : null, lat: m.location ? m.location[1] : null });
-  }));
-  return { mode:'drive', duration:r.duration, distance:r.distance, source:'OSRM',
-    legs:[{ kind:'CAR', color:COLOR.CAR, coords:r.geometry.coordinates, steps }] };
+  const routes = j.routes || [];
+  if(!routes.length) throw new Error('No driving route exists between those points');
+  return routes.map(r => {
+    const steps = [];
+    r.legs.forEach(l => l.steps.forEach(s => {
+      const m = s.maneuver || {};
+      steps.push({ text: osrmText(s), dist: s.distance, road: s.name || '',
+        lon: m.location ? m.location[0] : null, lat: m.location ? m.location[1] : null });
+    }));
+    return { mode:'drive', duration:r.duration, distance:r.distance, source:'OSRM',
+      via: viaLabel(steps),
+      legs:[{ kind:'CAR', color:COLOR.CAR, coords:r.geometry.coordinates, steps }] };
+  }).sort((x,y) => x.duration - y.duration);
 }
 async function routeValhalla(a, b, costing){
-  const body = { locations:[{lat:a.lat,lon:a.lon},{lat:b.lat,lon:b.lon}], costing,
+  const body = { locations:[{lat:a.lat,lon:a.lon},{lat:b.lat,lon:b.lon}], costing, alternates:2,
     directions_options:{ units: IMP() ? 'miles' : 'kilometers', language:'en-US' } };
   const j = await NET.json(MOTIS_FALLBACK_VALHALLA, { method:'POST',
     headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) },
     { tries:1, ms:20000, label: costing === 'bicycle' ? 'Cycling router' : 'Walking router' });
-  const t = j.trip;
-  if(!t || !t.legs) throw new Error('No route found for that mode');
+  const trips = [j.trip].concat((j.alternates || []).map(x => x && x.trip).filter(Boolean));
+  if(!trips[0] || !trips[0].legs) throw new Error('No route found for that mode');
   const unit = IMP() ? 1609.34 : 1000;
+  const built = trips.filter(t => t && t.legs).map(t => {
   let coords = [], steps = [];
   t.legs.forEach(l => {
     const shp = decodePoly(l.shape, 6);
@@ -289,9 +312,11 @@ async function routeValhalla(a, b, costing){
     });
   });
   return { mode: costing === 'bicycle' ? 'bike' : 'walk', duration:t.summary.time,
-    distance:t.summary.length * unit, source:'Valhalla',
+    distance:t.summary.length * unit, source:'Valhalla', via: viaLabel(steps),
     legs:[{ kind: costing === 'bicycle' ? 'BIKE' : 'WALK',
       color: costing === 'bicycle' ? COLOR.BIKE : COLOR.WALK, coords, steps }] };
+  });
+  return built.sort((x,y) => x.duration - y.duration);
 }
 const MOTIS_FALLBACK_VALHALLA = 'https://valhalla1.openstreetmap.de/route';
 
@@ -353,9 +378,9 @@ async function routeTransit(a, b){
 }
 async function planMode(m){
   const a = trip.from, b = trip.to;
-  if(m === 'drive')  return [await routeDrive(a,b)];
-  if(m === 'walk')   return [await routeValhalla(a,b,'pedestrian')];
-  if(m === 'bike')   return [await routeValhalla(a,b,'bicycle')];
+  if(m === 'drive')  return await routeDrive(a,b);
+  if(m === 'walk')   return await routeValhalla(a,b,'pedestrian');
+  if(m === 'bike')   return await routeValhalla(a,b,'bicycle');
   return await routeTransit(a,b);
 }
 
@@ -399,9 +424,21 @@ function renderError(m, e){
 }
 
 /* ── rendering routes ─────────────────────────────────────── */
+function paintAlts(){
+  const asrc = map.getSource('alts');
+  if(!asrc) return;
+  const feats = [];
+  options.forEach(o => {
+    if(o === current) return;
+    o.legs.forEach(l => { if(l.coords && l.coords.length > 1)
+      feats.push({ type:'Feature', properties:{}, geometry:{ type:'LineString', coordinates:l.coords } }); });
+  });
+  asrc.setData({ type:'FeatureCollection', features: feats });
+}
 function paintRoute(it){
   const src = map.getSource('route'), ssrc = map.getSource('stops');
   if(!src) return;
+  paintAlts();
   if(!it){ src.setData(EMPTY); if(ssrc) ssrc.setData(EMPTY); return; }
   const feats = it.legs.filter(l => l.coords && l.coords.length > 1).map(l => ({
     type:'Feature', properties:{ color:l.color, walk: l.kind === 'WALK' },
@@ -461,7 +498,7 @@ function renderOptions(){
     const when = it.depart ? clock(it.depart) + ' → ' + clock(it.arrive) : '';
     const sum = it.mode === 'transit'
       ? (it.transfers === 0 ? 'Direct' : it.transfers + ' transfer' + (it.transfers > 1 ? 's' : ''))
-      : '';
+      : (it.via || '') + (i === 0 && options.length > 1 ? ' · fastest' : '');
     return '<div class="opt' + sel + '" data-i="' + i + '">' +
       '<div class="top"><span class="dur">' + fmtDur(it.duration) + '</span>' +
       '<span class="dist">' + (it.mode === 'transit'
@@ -647,7 +684,7 @@ function toggleFollow(){
 let nav = null;
 function startNav(it){
   if(!it || !it.legs[0] || !it.legs[0].steps.length) return;
-  nav = { steps: it.legs[0].steps, i:0, total: it.duration, dist: it.distance };
+  nav = { steps: it.legs[0].steps, i:0, total: it.duration, dist: it.distance, via: it.via || '' };
   $('nav').hidden = false;
   $('panel').classList.add('hid');
   map.easeTo({ pitch:60, zoom:17, duration:900 });
@@ -671,6 +708,8 @@ function paintNav(){
   $('navLeft').textContent = fmtDist(left);
   const secs = nav.dist ? nav.total * (left / nav.dist) : 0;
   $('navEta').textContent = clock(Date.now() + secs * 1000);
+  $('navTimeLeft').textContent = fmtShort(secs);
+  $('navTrip').textContent = fmtDur(nav.total) + ' · ' + fmtDist(nav.dist) + (nav.via ? ' · ' + nav.via : '');
   $('navSpeed').textContent = (speed != null && following) ? Math.round(speed) + (IMP() ? ' mph' : ' kph') : '—';
   $('navPrev').disabled = nav.i === 0;
   $('navNext').disabled = nav.i >= nav.steps.length - 1;
@@ -704,7 +743,7 @@ const qUsed = () => +(store.get(qKey(), '0')) || 0;
 function qBump(){ const n = qUsed() + 1; store.set(qKey(), String(n)); stamp(); return n; }
 function addTraffic(){
   if(!ttKey || map.getSource('flow')) return;
-  const st = theme === 'dark' ? 'relative0-dark' : 'relative0';
+  const st = SKINS[skin].dark ? 'relative0-dark' : 'relative0';
   map.addSource('flow', { type:'raster', tileSize:256,
     tiles:['https://api.tomtom.com/traffic/map/4/tile/flow/' + st + '/{z}/{x}/{y}.png?key=' +
       encodeURIComponent(ttKey) + '&tileSize=256&thickness=4'] });
@@ -802,14 +841,19 @@ document.querySelectorAll('.mode').forEach(el => el.addEventListener('click', as
 document.querySelector('.mode[data-mode="' + mode + '"]').classList.add('on');
 
 $('panelToggle').onclick = () => $('panel').classList.toggle('hid');
-$('themeBtn').onclick = () => {
-  theme = theme === 'light' ? 'dark' : 'light';
-  store.set('tern.theme', theme);
-  document.documentElement.setAttribute('data-theme', theme);
+function setSkin(next){
+  if(!SKINS[next] || next === skin) return;
+  skin = next; store.set('tern.skin', skin);
+  document.documentElement.setAttribute('data-skin', skin);
+  document.querySelectorAll('#skinbar button').forEach(b => b.classList.toggle('on', b.dataset.skin === skin));
   const had = !!map.getSource('flow');
-  map.setStyle(STYLE[theme]);
+  map.setStyle(SKINS[skin].map);
   map.once('styledata', () => { if(!had) removeTraffic(); addLayers(); });
-};
+}
+document.querySelectorAll('#skinbar button').forEach(b =>
+  b.addEventListener('click', () => setSkin(b.dataset.skin)));
+document.querySelectorAll('#skinbar button').forEach(b =>
+  b.classList.toggle('on', b.dataset.skin === skin));
 $('locBtn').onclick = () => { if(!me) useGps(); else toggleFollow(); };
 $('tiltBtn').onclick = () => {
   const on = map.getPitch() < 20;
@@ -845,8 +889,7 @@ $('navPrev').onclick = () => navStep(-1);
 $('navNext').onclick = () => navStep(1);
 addEventListener('keydown', e => {
   if(e.target.tagName === 'INPUT') return;
-  if(e.key === 't') $('themeBtn').click();
-  else if(e.key === 'g') $('locBtn').click();
+  if(e.key === 'g') $('locBtn').click();
   else if(e.key === 'Escape'){ hideSug(); $('diag').hidden = true; if(nav) endNav(); }
   else if(nav && (e.key === 'ArrowRight' || e.key === ' ')){ e.preventDefault(); navStep(1); }
   else if(nav && e.key === 'ArrowLeft'){ e.preventDefault(); navStep(-1); }

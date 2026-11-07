@@ -82,7 +82,19 @@ const MOCK = {
       geometry:{ coordinates:[-80.8456,35.1924] } },
     { properties:{ name:'Freedom Park Bandshell', city:'Charlotte', state:'North Carolina', country:'United States' },
       geometry:{ coordinates:[-80.8460,35.1930] } } ] },
-  osrm:{ code:'Ok', routes:[{ distance:6823.4, duration:842.1,
+  osrm:{ code:'Ok', routes:[
+    { distance:9100, duration:1010,
+      geometry:{ type:'LineString', coordinates: SEG1.concat(SEG2) },
+      legs:[{ steps:[
+        { distance:900, name:'I-277', maneuver:{ type:'depart', bearing_after:90, location:[-80.8431,35.2271] } },
+        { distance:5200, name:'I-277', maneuver:{ type:'merge', modifier:'right', location:[-80.8420,35.2260] } },
+        { distance:0, name:'', maneuver:{ type:'arrive', location:[-80.8456,35.1924] } } ] }] },
+    { distance:7400, duration:905,
+      geometry:{ type:'LineString', coordinates: SEG2 },
+      legs:[{ steps:[
+        { distance:4000, name:'Park Rd', maneuver:{ type:'depart', bearing_after:180, location:[-80.8431,35.2271] } },
+        { distance:0, name:'', maneuver:{ type:'arrive', location:[-80.8456,35.1924] } } ] }] },
+    { distance:6823.4, duration:842.1,
     geometry:{ type:'LineString', coordinates: SEG1.concat(SEG2) },
     legs:[{ steps:[
       { distance:640, name:'S Tryon St', maneuver:{ type:'depart', bearing_after:184, location:[-80.8431,35.2271] } },
@@ -93,7 +105,11 @@ const MOCK = {
     maneuvers:[
       { instruction:'Walk south on South Tryon Street.', length:0.4, street_names:['South Tryon Street'], begin_shape_index:0 },
       { instruction:'Turn right onto East Morehead Street.', length:1.1, street_names:['East Morehead Street'], begin_shape_index:1 },
-      { instruction:'You have arrived at your destination.', length:0, begin_shape_index:3 } ] }] } },
+      { instruction:'You have arrived at your destination.', length:0, begin_shape_index:3 } ] }] },
+    alternates:[{ trip:{ summary:{ length:3.1, time:2300 }, legs:[{ shape: enc(SEG2,6),
+      maneuvers:[
+        { instruction:'Walk along the greenway.', length:3.1, street_names:['Little Sugar Creek Greenway'], begin_shape_index:0 },
+        { instruction:'You have arrived.', length:0, begin_shape_index:2 } ] }] } }] },
   valhallaStatus:{ version:'3.5.1-0d04136' },
   motis:{ itineraries:[
     { duration:1980, startTime:T0, endTime:T3, legs:[
@@ -133,7 +149,8 @@ globalThis.fetch = async (url, opt) => {
 
 const probe = `;globalThis.T = { fmtDist, fmtDur, fmtShort, decodePoly, geocode, routeDrive, routeValhalla,
   routeTransit, planMode, planAll, renderOptions, paintRoute, systemCheck, startNav, navStep, endNav, advance,
-  setPlace, trip, SERVICES, hav, addLayers,
+  setPlace, trip, SERVICES, hav, addLayers, paintAlts, viaLabel,
+  setOptions:(o,c)=>{ options=o; current=c; },
   get options(){return options}, get current(){return current}, get nav(){return nav}, set nav(v){nav=v},
   get map(){return map}, get me(){return me}, set me(v){me=v}, set following(v){following=v},
   set mode(v){mode=v}, get mode(){return mode}, set ttKey(v){ttKey=v} };`;
@@ -164,15 +181,26 @@ chk(hits[0].name === 'Freedom Park', 'first search hit');
 
 /* ── drive ────────────────────────────────────────────────── */
 const A = { lat:35.2271, lon:-80.8431 }, B = { lat:35.1924, lon:-80.8456 };
-const d = await T.routeDrive(A,B);
-console.log('\n── drive: ' + T.fmtDur(d.duration) + ' / ' + T.fmtDist(d.distance) + ', ' + d.legs[0].steps.length + ' steps');
-d.legs[0].steps.forEach(s => console.log('   • ' + s.text));
+const drives = await T.routeDrive(A,B);
+const d = drives[0];
+console.log('\n── drive: ' + drives.length + ' alternatives');
+drives.forEach((r,i) => console.log('   ' + (i+1) + ') ' + T.fmtDur(r.duration).padEnd(10) +
+  T.fmtDist(r.distance).padEnd(9) + (r.via || '')));
+chk(drives.length===3, 'three driving alternatives, got ' + drives.length);
+chk(drives[0].duration <= drives[1].duration && drives[1].duration <= drives[2].duration,
+    'alternatives sorted fastest first');
+chk(/via /.test(drives[1].via), 'alternative carries a via label, got ' + JSON.stringify(drives[1].via));
+console.log('   fastest steps:');
+d.legs[0].steps.forEach(s => console.log('     • ' + s.text));
 chk(d.legs[0].steps.length===4 && /Head south/.test(d.legs[0].steps[0].text), 'drive steps');
 
 /* ── walk / bike ──────────────────────────────────────────── */
-const w = await T.routeValhalla(A,B,'pedestrian');
-const bk = await T.routeValhalla(A,B,'bicycle');
-console.log('\n── walk: ' + T.fmtDur(w.duration) + ' / ' + T.fmtDist(w.distance) + ', kind ' + w.legs[0].kind);
+const walks = await T.routeValhalla(A,B,'pedestrian');
+const w = walks[0];
+const bk = (await T.routeValhalla(A,B,'bicycle'))[0];
+console.log('\n── walk: ' + walks.length + ' options, fastest ' + T.fmtDur(w.duration) +
+  ' / ' + T.fmtDist(w.distance) + ' ' + (w.via||''));
+chk(walks.length===2, 'valhalla alternate parsed, got ' + walks.length);
 console.log('── bike: kind ' + bk.legs[0].kind + ', colour ' + bk.legs[0].color);
 chk(w.legs[0].kind==='WALK' && bk.legs[0].kind==='BIKE', 'walk/bike leg kinds');
 chk(w.legs[0].steps[1].lat != null, 'valhalla maneuver coordinates resolved from shape index');
@@ -227,7 +255,16 @@ console.log('   route features: ' + routeData.features.length +
 console.log('   transit stop dots: ' + stopData.features.length);
 chk(routeData.features.length===3, 'three leg features painted');
 chk(stopData.features.length===2, 'board and alight dots');
-chk(['route-case','route-line','route-walk','stops'].every(l => T.map.lay[l]), 'all route layers registered');
+chk(['route-case','route-line','route-walk','stops','alts'].every(l => T.map.lay[l]), 'all route layers registered');
+
+/* ── alternatives drawn greyed behind the choice ──────────── */
+T.mode = 'drive';
+const dopts = await T.planMode('drive');
+T.setOptions(dopts, dopts[0]);
+T.paintRoute(dopts[0]);
+const altData = T.map.src['alts']._data;
+console.log('\n── alternatives on the map: ' + altData.features.length + ' greyed, 1 highlighted');
+chk(altData.features.length===2, 'the two unchosen routes are drawn greyed, got ' + altData.features.length);
 
 /* ── no-transit path ──────────────────────────────────────── */
 failTransit = true;

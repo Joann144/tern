@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-skin="apple">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
@@ -14,6 +14,13 @@
 <body>
 <div id="map"></div>
 
+<div id="skinbar">
+  <span>Design</span>
+  <button data-skin="apple">Apple</button>
+  <button data-skin="google">Google</button>
+  <button data-skin="uber">Uber</button>
+</div>
+
 <!-- ───────────────── trip planner ───────────────── -->
 <aside id="panel">
   <header id="brand">
@@ -21,9 +28,6 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l6-3 6 3 6-3v13l-6 3-6-3-6 3V7z"/><path d="M9 4v13M15 7v13"/></svg>
     </div>
     <h1>Tern</h1>
-    <button class="ghost" id="themeBtn" title="Light or dark (T)" aria-label="Toggle theme">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.2M12 19.8V22M2 12h2.2M19.8 12H22M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M19.1 4.9l-1.6 1.6M6.5 17.5l-1.6 1.6"/></svg>
-    </button>
     <button class="ghost" id="diagBtn" title="System check" aria-label="System check">
       <span class="pip" id="diagPip" hidden></span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.8"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-2.9 1.2 2 2 0 11-4 0 1.7 1.7 0 00-2.9-1.2l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.7 1.7 0 003 15a2 2 0 110-4 1.7 1.7 0 001.2-2.9l-.1-.1a2 2 0 112.8-2.8l.1.1A1.7 1.7 0 0010 4.2a2 2 0 114 0 1.7 1.7 0 002.9 1.2l.1-.1a2 2 0 112.8 2.8l-.1.1A1.7 1.7 0 0021 11a2 2 0 110 4z"/></svg>
@@ -114,8 +118,10 @@
     </div>
   </div>
   <div id="navBar">
+    <div class="trip" id="navTrip"></div>
+    <div class="stat"><b id="navTimeLeft">—</b><span>Time left</span></div>
     <div class="stat"><b id="navEta">—</b><span>Arrive</span></div>
-    <div class="stat"><b id="navLeft">—</b><span>Left</span></div>
+    <div class="stat"><b id="navLeft">—</b><span>Distance</span></div>
     <div class="stat"><b id="navSpeed">—</b><span>Speed</span></div>
     <button class="nb" id="navPrev" title="Previous (←)">Back</button>
     <button class="nb primary" id="navNext" title="Next (→)">Next</button>
