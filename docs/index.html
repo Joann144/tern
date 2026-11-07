@@ -130,7 +130,9 @@ svg{width:18px;height:18px;flex:none}
 .dep{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12.5px}
 .dep b{min-width:40px;font-weight:700}
 .dep .to{flex:1;min-width:0;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dep .at{font-family:var(--num);font-variant-numeric:tabular-nums;font-weight:600}
+.dep .sched{font-size:10.5px;color:var(--ink3);font-family:var(--num)}
+.dep .sched s{opacity:.8}
+.dep .at{font-family:var(--num);font-variant-numeric:tabular-nums;font-weight:650;min-width:72px;text-align:right}
 .dep .at.late{color:var(--bad)} .dep .at.early{color:var(--warn)}
 .late{color:var(--bad);font-weight:650} .early{color:var(--warn);font-weight:650}
 .ontime{color:var(--good);font-weight:650}
@@ -946,11 +948,13 @@ async function departures(stopId, name){
     const when = t.departure || t.time || t.scheduledDeparture;
     const sched = t.scheduledDeparture || null;
     const delay = (sched && when) ? Math.round((new Date(when) - new Date(sched)) / 60000) : null;
-    return { when, delay, realTime: t.realTime === true,
+    return { when, sched, delay,
+      realTime: d.realTime === true,                       // lives on the entry, not on place
+      cancelled: d.cancelled === true || d.tripCancelled === true,
       line: (d.routeShortName || d.displayName || ''), headsign: d.headsign || '',
       mode: transitLabel(d.mode) };
   }).filter(r => r.when);
-  return { name, rows };
+  return { name: (j.place && j.place.name) || name, rows };
 }
 function renderDepartures(board){
   const box = $('live');
@@ -960,10 +964,15 @@ function renderDepartures(board){
     esc(board.name) + '</div>' +
     board.rows.slice(0,5).map(r => {
       const late = r.delay != null && r.delay !== 0;
+      const cls = r.cancelled ? ' late' : late ? (r.delay > 0 ? ' late' : ' early') : '';
+      const right = r.cancelled
+        ? 'Cancelled'
+        : clock(r.when) + (late ? '  ' + (r.delay > 0 ? '+' : '') + r.delay : '');
+      const sub = (late && !r.cancelled) ? '<s>' + clock(r.sched) + '</s>' : (r.realTime ? 'live' : '');
       return '<div class="dep"><b>' + esc(r.line || r.mode) + '</b>' +
         '<span class="to">' + esc(r.headsign) + '</span>' +
-        '<span class="at' + (late ? (r.delay > 0 ? ' late' : ' early') : '') + '">' +
-        clock(r.when) + (late ? ' (' + (r.delay > 0 ? '+' : '') + r.delay + ')' : '') + '</span></div>';
+        '<span class="sched">' + sub + '</span>' +
+        '<span class="at' + cls + '">' + right + '</span></div>';
     }).join('');
 }
 async function refreshDepartures(it){

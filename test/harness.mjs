@@ -130,12 +130,14 @@ const MOCK = {
       { mode:'WALK', from:{name:'East/West Blvd'}, to:{name:'Freedom Park'},
         startTime:T2, endTime:T3, duration:800, distance:900, legGeometry:{points:enc(SEG3,6),precision:6} } ] } ] },
   stoptimes:{ stopTimes:[
-    { routeShortName:'11', headsign:'Freedom Dr', mode:'BUS',
-      place:{ departure:'2026-11-07T16:52:00Z', scheduledDeparture:'2026-11-07T16:50:00Z', realTime:true } },
-    { routeShortName:'6', headsign:'Uptown', mode:'BUS',
-      place:{ departure:'2026-11-07T16:58:00Z', scheduledDeparture:'2026-11-07T16:58:00Z', realTime:true } },
-    { routeShortName:'Blue', headsign:'I-485', mode:'LIGHT_RAIL',
-      place:{ departure:'2026-11-07T17:03:00Z', scheduledDeparture:'2026-11-07T17:05:00Z', realTime:true } } ] },
+    { routeShortName:'11', headsign:'Freedom Dr', mode:'BUS', realTime:true,
+      place:{ departure:'2026-11-07T16:52:00Z', scheduledDeparture:'2026-11-07T16:50:00Z' } },
+    { routeShortName:'6', headsign:'Uptown', mode:'BUS', realTime:true,
+      place:{ departure:'2026-11-07T16:58:00Z', scheduledDeparture:'2026-11-07T16:58:00Z' } },
+    { routeShortName:'Blue', headsign:'I-485', mode:'LIGHT_RAIL', realTime:true, cancelled:false,
+      place:{ departure:'2026-11-07T17:03:00Z', scheduledDeparture:'2026-11-07T17:05:00Z' } },
+    { routeShortName:'9', headsign:'Airport', mode:'BUS', realTime:true, tripCancelled:true,
+      place:{ departure:'2026-11-07T17:10:00Z', scheduledDeparture:'2026-11-07T17:10:00Z' } } ] },
   tomtom:{ incidents:[{type:'Feature'},{type:'Feature'},{type:'Feature'}] },
   style:{ layers:new Array(42).fill({}) }
 };
@@ -247,10 +249,12 @@ chk(tr.some(x => x.live), 'itinerary flagged as carrying live data');
 /* ── live departure board ─────────────────────────────────── */
 const board = await T.departures('us-cats_1234', 'Tryon St & 5th St');
 console.log('\n── departure board at ' + board.name);
-board.rows.forEach(r => console.log('   ' + String(r.line).padEnd(6) +
+board.rows.forEach(r => console.log('   ' + String(r.line).padEnd(6) + (r.cancelled?'CANCELLED ':'') +
   new Date(r.when).toISOString().slice(11,16) +
   (r.delay ? '  ' + (r.delay>0?'+':'') + r.delay + ' min' : '  on time') + '   ' + r.headsign));
-chk(board.rows.length === 3, 'three live departures parsed, got ' + board.rows.length);
+chk(board.rows.length === 4, 'four live departures parsed, got ' + board.rows.length);
+chk(board.rows.every(r => r.realTime), 'realTime read from the entry, not from place');
+chk(board.rows[3].cancelled === true, 'cancelled trip detected');
 chk(board.rows[0].delay === 2, 'departure delay computed, got ' + board.rows[0].delay);
 chk(board.rows[1].delay === 0, 'punctual departure reads zero, got ' + board.rows[1].delay);
 chk(board.rows[2].delay === -2, 'early departure reads negative, got ' + board.rows[2].delay);

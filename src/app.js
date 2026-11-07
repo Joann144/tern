@@ -452,11 +452,13 @@ async function departures(stopId, name){
     const when = t.departure || t.time || t.scheduledDeparture;
     const sched = t.scheduledDeparture || null;
     const delay = (sched && when) ? Math.round((new Date(when) - new Date(sched)) / 60000) : null;
-    return { when, delay, realTime: t.realTime === true,
+    return { when, sched, delay,
+      realTime: d.realTime === true,                       // lives on the entry, not on place
+      cancelled: d.cancelled === true || d.tripCancelled === true,
       line: (d.routeShortName || d.displayName || ''), headsign: d.headsign || '',
       mode: transitLabel(d.mode) };
   }).filter(r => r.when);
-  return { name, rows };
+  return { name: (j.place && j.place.name) || name, rows };
 }
 function renderDepartures(board){
   const box = $('live');
@@ -466,10 +468,15 @@ function renderDepartures(board){
     esc(board.name) + '</div>' +
     board.rows.slice(0,5).map(r => {
       const late = r.delay != null && r.delay !== 0;
+      const cls = r.cancelled ? ' late' : late ? (r.delay > 0 ? ' late' : ' early') : '';
+      const right = r.cancelled
+        ? 'Cancelled'
+        : clock(r.when) + (late ? '  ' + (r.delay > 0 ? '+' : '') + r.delay : '');
+      const sub = (late && !r.cancelled) ? '<s>' + clock(r.sched) + '</s>' : (r.realTime ? 'live' : '');
       return '<div class="dep"><b>' + esc(r.line || r.mode) + '</b>' +
         '<span class="to">' + esc(r.headsign) + '</span>' +
-        '<span class="at' + (late ? (r.delay > 0 ? ' late' : ' early') : '') + '">' +
-        clock(r.when) + (late ? ' (' + (r.delay > 0 ? '+' : '') + r.delay + ')' : '') + '</span></div>';
+        '<span class="sched">' + sub + '</span>' +
+        '<span class="at' + cls + '">' + right + '</span></div>';
     }).join('');
 }
 async function refreshDepartures(it){
