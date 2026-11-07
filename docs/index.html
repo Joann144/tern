@@ -65,7 +65,7 @@ html[data-skin="uber"]{
   --panel-inset:0px; --panel-radius:0px; --blur:none;
   --shadow:0 1px 2px rgba(0,0,0,.6);
   --shadow-lg:0 20px 60px rgba(0,0,0,.8);
-  --fs:14px; --hero:36px; --hero-w:800; --hero-track:-1.6px; --pad:16px;
+  --fs:14px; --hero:29px; --hero-w:800; --hero-track:-1.2px; --pad:16px;
 }
 
 /* ── design switcher ────────────────────────────────────── */
@@ -176,8 +176,9 @@ html[data-skin="google"] .opt.on{background:var(--accent-soft);box-shadow:none;
   border-left:4px solid var(--accent);padding-left:10px}
 html[data-skin="uber"] .opt{background:#141518;border-color:transparent}
 html[data-skin="uber"] .opt.on{border-color:var(--hi);box-shadow:0 0 0 1px var(--hi)}
-.opt .top{display:flex;align-items:baseline;gap:8px}
-.opt .dur{font-size:var(--hero);font-weight:var(--hero-w);letter-spacing:var(--hero-track)}
+.opt .top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.opt .dur{font-size:var(--hero);font-weight:var(--hero-w);letter-spacing:var(--hero-track);
+  white-space:nowrap;line-height:1.1}
 html[data-skin="uber"] .opt.on .dur{color:var(--hi)}
 .opt .dist{font-size:12px;color:var(--ink2)}
 .opt .when{margin-left:auto;font-size:12px;color:var(--ink2);font-family:var(--mono)}
