@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en" data-t="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Tern</title>
+<link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
+<link rel="preconnect" href="https://photon.komoot.io">
+<style>__MAPLIBRE_CSS__</style>
+<style>__CSS__</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="grid"></div>
+<div id="boot"><span class="pulse"></span> initialising</div>
+
+<div id="find">
+  <div class="p" id="bar">
+    <span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span>
+    <input id="q" placeholder="search destination" autocomplete="off" spellcheck="false" enterkeyhint="search">
+    <button class="xb" id="qx" hidden title="Clear"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="p" id="hits"></div>
+</div>
+
+<div id="rail">
+  <div class="r" id="loc" title="GPS / follow (g)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3.2M12 18.8V22M2 12h3.2M18.8 12H22"/><circle cx="12" cy="12" r="8"/></svg>
+  </div>
+  <div class="r" id="tilt" title="3D tilt"><span class="t">3D</span></div>
+  <div class="r" id="theme" title="Light / dark (t)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.4M12 19.6V22M2 12h2.4M19.6 12H22M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M19.1 4.9l-1.7 1.7M6.6 17.4l-1.7 1.7"/></svg>
+  </div>
+  <div class="r" id="traf" title="Live traffic and closures"><span class="t">TRFC</span></div>
+  <div class="r" id="gear" title="Diagnostics and settings" style="position:relative">
+    <span class="bad" id="diagdot" style="display:none"></span>
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-2.9 1.2 2 2 0 11-4 0 1.7 1.7 0 00-2.9-1.2l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.7 1.7 0 003 15a2 2 0 110-4 1.7 1.7 0 001.2-2.9l-.1-.1a2 2 0 112.8-2.8l.1.1A1.7 1.7 0 0010 4.2a2 2 0 114 0 1.7 1.7 0 002.9 1.2l.1-.1a2 2 0 112.8 2.8l-.1.1A1.7 1.7 0 0021 11a2 2 0 110 4z"/></svg>
+  </div>
+</div>
+
+<div class="p" id="foot"><span id="upd"></span></div>
+
+<div class="p" id="card"><button class="close" id="cardx">&times;</button><div id="cardb"></div></div>
+
+<div id="hud">
+  <div class="p" id="hudtop">
+    <div class="mi" id="hudmi"></div>
+    <div class="nt">
+      <div id="hudd">--</div>
+      <div id="hudi"></div>
+      <div id="hudr"></div>
+      <div id="gpschip" class="chip">GPS OFF</div>
+    </div>
+  </div>
+  <div class="p" id="hudbot">
+    <div class="cell"><div class="cv num" id="hudeta">--</div><div class="ck">arrival</div></div>
+    <div class="cell"><div class="cv num" id="hudrem">--</div><div class="ck">remaining</div></div>
+    <div class="cell"><div class="cv num" id="hudsp">--</div><div class="ck">speed</div></div>
+    <button class="stepb" id="hudprev" title="Previous step (left arrow)">&#9664;</button>
+    <button class="stepb next" id="hudnext" title="Next step (right arrow or space)">NEXT &#9654;</button>
+    <button id="hudx">END</button>
+  </div>
+</div>
+
+<div id="diag">
+  <div class="p" id="diagb">
+    <button class="close" id="diagx">&times;</button>
+    <h3>System check</h3>
+    <p class="note">Every service this app depends on, tested live. Anything red is the reason something is not working.</p>
+    <div class="sv" id="sv-tile"><span class="sd"></span><span class="sn">Map tiles</span><span class="se">idle</span></div>
+    <div class="sv" id="sv-geo"><span class="sd"></span><span class="sn">Search</span><span class="se">idle</span></div>
+    <div class="sv" id="sv-rt1"><span class="sd"></span><span class="sn">Router</span><span class="se">idle</span></div>
+    <div class="sv" id="sv-rt2"><span class="sd"></span><span class="sn">Router backup</span><span class="se">idle</span></div>
+    <div class="sv" id="sv-traf"><span class="sd"></span><span class="sn">Live traffic</span><span class="se">idle</span></div>
+    <div class="sv" id="sv-gps"><span class="sd"></span><span class="sn">GPS</span><span class="se">idle</span></div>
+    <p class="fix" id="fix" style="display:none">Something above is blocked. This happens when the page is opened straight off the disk, because the browser treats a file as having no origin and some services refuse it. Fix: put this file in a folder, open a terminal there, run <b>python -m http.server 8000</b>, then visit <b>http://localhost:8000</b>. Everything above will go green.</p>
+    <label for="key">TomTom API key, for live traffic and closures</label>
+    <input id="key" placeholder="paste key here" spellcheck="false" autocomplete="off">
+    <div class="sv" style="border:0"><span class="sd" id="kdot"></span><span class="se" id="ktxt"></span></div>
+    <div class="row"><button class="btn go" id="keysave">Save key</button><button class="btn" id="retest">Retest</button></div>
+  </div>
+</div>
+
+<div class="p" id="toast"></div>
+<div id="fail"><div class="p" id="failb"></div></div>
+
+<script>__MAPLIBRE_JS__</script>
+<script>__APP__</script>
+</body>
+</html>
