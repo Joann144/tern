@@ -14,11 +14,18 @@ Built on OpenStreetMap data through open services, with optional live traffic fr
 | Driving routes with turn-by-turn | OSRM | no |
 | Walking and cycling routes | Valhalla | no |
 | Public transport: bus, train, tram, ferry | Transitous (MOTIS) | no |
+| Real-time delays from GTFS-RT | Transitous (MOTIS) | no |
+| Live departure board at your boarding stop | Transitous (MOTIS) | no |
+| Alternative routes, labelled by road | OSRM and Valhalla | no |
 | Side-by-side time for all four modes | all of the above, in parallel | no |
 | GPS position and follow mode | browser Geolocation | no |
 | Navigation HUD, ETA, distance, speed | computed locally | no |
 | Live traffic flow | TomTom raster flow tiles | yes |
 | Incidents and road closures | TomTom Incident Details v5 | yes |
+
+## Live data
+
+Where a transit agency publishes a real-time GTFS-RT feed, journeys show actual times against the timetable: a leg running late is marked **+4 min**, a punctual one **on time**. Pick a transit journey and a live departure board appears for the stop you board at, showing the next services with their real delays, refreshed from the feed rather than the schedule.
 
 ## The planner
 

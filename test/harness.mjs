@@ -116,8 +116,9 @@ const MOCK = {
       { mode:'WALK', from:{name:'Your location'}, to:{name:'Tryon St & 5th St'},
         startTime:T0, endTime:T1, duration:360, distance:430, legGeometry:{points:enc(SEG1,6),precision:6} },
       { mode:'BUS', routeShortName:'11', headsign:'Freedom Dr', routeColor:'1f6feb',
-        from:{name:'Tryon St & 5th St'}, to:{name:'East Blvd & Dilworth Rd'},
-        startTime:T1, endTime:T2, duration:1080, distance:5200, legGeometry:{points:enc(SEG2,6),precision:6} },
+        from:{name:'Tryon St & 5th St', stopId:'us-cats_1234'}, to:{name:'East Blvd & Dilworth Rd'},
+        startTime:T1, endTime:T2, scheduledStartTime:'2026-11-07T16:44:00Z', realTime:true,
+        duration:1080, distance:5200, legGeometry:{points:enc(SEG2,6),precision:6} },
       { mode:'WALK', from:{name:'East Blvd & Dilworth Rd'}, to:{name:'Freedom Park'},
         startTime:T2, endTime:T3, duration:540, distance:610, legGeometry:{points:enc(SEG3,6),precision:6} } ] },
     { duration:2400, startTime:T0, endTime:T3, legs:[
@@ -128,6 +129,13 @@ const MOCK = {
         startTime:T1, endTime:T2, duration:1200, distance:4800, legGeometry:{points:enc(SEG2,6),precision:6} },
       { mode:'WALK', from:{name:'East/West Blvd'}, to:{name:'Freedom Park'},
         startTime:T2, endTime:T3, duration:800, distance:900, legGeometry:{points:enc(SEG3,6),precision:6} } ] } ] },
+  stoptimes:{ stopTimes:[
+    { routeShortName:'11', headsign:'Freedom Dr', mode:'BUS',
+      place:{ departure:'2026-11-07T16:52:00Z', scheduledDeparture:'2026-11-07T16:50:00Z', realTime:true } },
+    { routeShortName:'6', headsign:'Uptown', mode:'BUS',
+      place:{ departure:'2026-11-07T16:58:00Z', scheduledDeparture:'2026-11-07T16:58:00Z', realTime:true } },
+    { routeShortName:'Blue', headsign:'I-485', mode:'LIGHT_RAIL',
+      place:{ departure:'2026-11-07T17:03:00Z', scheduledDeparture:'2026-11-07T17:05:00Z', realTime:true } } ] },
   tomtom:{ incidents:[{type:'Feature'},{type:'Feature'},{type:'Feature'}] },
   style:{ layers:new Array(42).fill({}) }
 };
@@ -140,6 +148,7 @@ globalThis.fetch = async (url, opt) => {
   else if(u.includes('project-osrm')) body = MOCK.osrm;
   else if(u.includes('valhalla') && u.includes('/status')) body = MOCK.valhallaStatus;
   else if(u.includes('valhalla')) body = MOCK.valhalla;
+  else if(u.includes('transitous') && u.includes('stoptimes')) body = MOCK.stoptimes;
   else if(u.includes('transitous')) body = failTransit ? { itineraries:[] } : MOCK.motis;
   else if(u.includes('tomtom')) body = MOCK.tomtom;
   else if(u.includes('openfreemap')) body = MOCK.style;
@@ -149,7 +158,7 @@ globalThis.fetch = async (url, opt) => {
 
 const probe = `;globalThis.T = { fmtDist, fmtDur, fmtShort, decodePoly, geocode, routeDrive, routeValhalla,
   routeTransit, planMode, planAll, renderOptions, paintRoute, systemCheck, startNav, navStep, endNav, advance,
-  setPlace, trip, SERVICES, hav, addLayers, paintAlts, viaLabel,
+  setPlace, trip, SERVICES, hav, addLayers, paintAlts, viaLabel, departures, refreshDepartures, emptyState,
   setOptions:(o,c)=>{ options=o; current=c; },
   get options(){return options}, get current(){return current}, get nav(){return nav}, set nav(v){nav=v},
   get map(){return map}, get me(){return me}, set me(v){me=v}, set following(v){following=v},
@@ -225,6 +234,32 @@ console.log('   itinerary 1 walking: ' + T.fmtDist(tr[0].walkDistance) + ' of ' 
 const arrOrder = tr.map(x => +new Date(x.arrive));
 chk(arrOrder.every((v,i)=>i===0||v>=arrOrder[i-1]), 'itineraries sorted by arrival time');
 console.log('   arrival order: ' + tr.map(x=>new Date(x.arrive).toISOString().slice(11,16)).join(' , '));
+
+/* ── real-time delays ─────────────────────────────────────── */
+console.log('\n── real-time');
+const busLeg = tr.find(x => x.legs.some(l => l.realTime)).legs.find(l => l.realTime);
+console.log('   ' + busLeg.vehicle + ' ' + busLeg.line + ': scheduled ' +
+  new Date(busLeg.schedStart).toISOString().slice(11,16) + ', actual ' +
+  new Date(busLeg.startTime).toISOString().slice(11,16) + ' -> ' + busLeg.delay + ' min late');
+chk(busLeg.delay === 4, 'delay computed from scheduled vs actual, got ' + busLeg.delay);
+chk(tr.some(x => x.live), 'itinerary flagged as carrying live data');
+
+/* ── live departure board ─────────────────────────────────── */
+const board = await T.departures('us-cats_1234', 'Tryon St & 5th St');
+console.log('\n── departure board at ' + board.name);
+board.rows.forEach(r => console.log('   ' + String(r.line).padEnd(6) +
+  new Date(r.when).toISOString().slice(11,16) +
+  (r.delay ? '  ' + (r.delay>0?'+':'') + r.delay + ' min' : '  on time') + '   ' + r.headsign));
+chk(board.rows.length === 3, 'three live departures parsed, got ' + board.rows.length);
+chk(board.rows[0].delay === 2, 'departure delay computed, got ' + board.rows[0].delay);
+chk(board.rows[1].delay === 0, 'punctual departure reads zero, got ' + board.rows[1].delay);
+chk(board.rows[2].delay === -2, 'early departure reads negative, got ' + board.rows[2].delay);
+
+/* ── empty state tells you what to do ─────────────────────── */
+T.emptyState();
+const eh = document.getElementById('results').innerHTML;
+chk(/Where are you going/.test(eh) && /tap anywhere on the map/i.test(eh), 'empty state guides the user');
+console.log('\n── empty state present');
 
 /* ── all four modes in parallel ───────────────────────────── */
 console.log('\n── planning all modes');

@@ -7,11 +7,7 @@
 
 const $ = id => document.getElementById(id);
 const OFM = 'https://tiles.openfreemap.org';
-const SKINS = {
-  apple:  { map: OFM + '/styles/positron', dark:false },
-  google: { map: OFM + '/styles/liberty',  dark:false },
-  uber:   { map: OFM + '/styles/dark',     dark:true  }
-};
+const STYLE = { light: OFM + '/styles/liberty', dark: OFM + '/styles/dark' };
 const MOTIS = 'https://api.transitous.org';
 
 const store = {
@@ -19,13 +15,13 @@ const store = {
   set(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
 };
 
-let skin     = store.get('tern.skin', 'apple');
-if(!SKINS[skin]) skin = 'apple';
+let theme    = store.get('tern.theme', 'light');
+if(theme !== 'dark') theme = 'light';
 let units    = store.get('tern.units', 'imperial');
 let ttKey    = store.get('tern.ttkey', '');
 let mode     = store.get('tern.mode', 'drive');
 let trafficOn= store.get('tern.traffic', '0') === '1';
-document.documentElement.setAttribute('data-skin', skin);
+document.documentElement.setAttribute('data-theme', theme);
 
 const IMP = () => units === 'imperial';
 
@@ -123,7 +119,7 @@ try{
   if(!(probe.getContext('webgl2') || probe.getContext('webgl')))
     throw new Error('WebGL is unavailable. Turn on hardware acceleration, or use Chrome, Edge or Firefox.');
   map = new maplibregl.Map({
-    container:'map', style: SKINS[skin].map,
+    container:'map', style: STYLE[theme],
     center:[-80.8431, 35.2271], zoom: 12.4, pitch: 0,
     antialias:true, fadeDuration:110, maxTileCacheSize:520,
     attributionControl:false
@@ -153,7 +149,7 @@ function addLayers(){
     map.addSource('route', { type:'geojson', data: EMPTY });
     map.addLayer({ id:'route-case', type:'line', source:'route',
       layout:{ 'line-cap':'round','line-join':'round' },
-      paint:{ 'line-color': SKINS[skin].dark ? '#0b0d10' : '#ffffff',
+      paint:{ 'line-color': theme === 'dark' ? '#0b0d10' : '#ffffff',
         'line-width':['interpolate',['linear'],['zoom'],8,7,16,15] } }, firstSymbol());
     map.addLayer({ id:'route-line', type:'line', source:'route',
       filter:['!=',['get','walk'], true],
@@ -170,7 +166,7 @@ function addLayers(){
     map.addSource('alts', { type:'geojson', data: EMPTY });
     map.addLayer({ id:'alts', type:'line', source:'alts',
       layout:{ 'line-cap':'round','line-join':'round' },
-      paint:{ 'line-color': SKINS[skin].dark ? '#5b6675' : '#9aa4b2', 'line-width':5, 'line-opacity':.65 } },
+      paint:{ 'line-color': theme === 'dark' ? '#5b6675' : '#9aa4b2', 'line-width':5, 'line-opacity':.65 } },
       map.getLayer('route-case') ? 'route-case' : firstSymbol());
   }
   if(!map.getSource('stops')){
@@ -361,6 +357,11 @@ async function routeTransit(a, b){
         headsign: l.headsign || (l.to && l.to.name) || '',
         fromName: endName((l.from && l.from.name) || '', a), toName: endName((l.to && l.to.name) || '', b),
         startTime: l.startTime, endTime: l.endTime,
+        schedStart: l.scheduledStartTime || null,
+        realTime: l.realTime === true,
+        delay: (l.scheduledStartTime && l.startTime)
+          ? Math.round((new Date(l.startTime) - new Date(l.scheduledStartTime)) / 60000) : null,
+        stopId: (l.from && (l.from.stopId || l.from.id)) || null,
         duration: l.duration, distance: l.distance || 0, steps: []
       };
     });
@@ -371,6 +372,8 @@ async function routeTransit(a, b){
       walkDistance: legs.filter(l => l.kind === 'WALK').reduce((s,l) => s + (l.distance || 0), 0),
       depart: it.startTime, arrive: it.endTime,
       transfers: Math.max(0, legs.filter(l => l.kind === 'TRANSIT').length - 1),
+      live: legs.some(l => l.realTime),
+      maxDelay: legs.reduce((d,l) => (l.delay != null && Math.abs(l.delay) > Math.abs(d)) ? l.delay : d, 0),
       source:'Transitous', legs };
   });
   out.sort((x, y) => new Date(x.arrive) - new Date(y.arrive));
@@ -400,7 +403,8 @@ async function planAll(){
       if(token !== planToken) return;
       etaCache[m] = res[0] ? res[0].duration : null;
       setTab(m, res[0] ? fmtShort(res[0].duration) : '—');
-      if(m === mode){ options = res; current = res[0]; renderOptions(); paintRoute(current); fitRoute(current); }
+      if(m === mode){ options = res; current = res[0]; renderOptions(); paintRoute(current); fitRoute(current);
+        refreshDepartures(current); }
     }catch(e){
       if(token !== planToken) return;
       etaCache[m] = null;
@@ -416,11 +420,65 @@ function setTab(m, txt){
   el.classList.remove('busy');
   el.querySelector('em').textContent = txt;
 }
+function emptyState(){
+  $('live').hidden = true;
+  $('results').innerHTML =
+    '<div class="empty">' +
+      '<div class="eicon">' + svg('<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>', 2) + '</div>' +
+      '<h3>Where are you going?</h3>' +
+      '<p>Type a destination above, or tap anywhere on the map. ' +
+      'We will price up driving, transit, cycling and walking side by side.</p>' +
+      '<div class="tips">' +
+        '<span>Tap the map to drop a point</span>' +
+        '<span>Use the crosshair for your location</span>' +
+        '<span>Transit shows live delays</span>' +
+      '</div>' +
+    '</div>';
+}
 function renderError(m, e){
   const why = e.message === 'NO_TRANSIT'
     ? 'No public transport connection was found for this trip. Transitous only has data where a transit agency publishes an open GTFS feed, and coverage is thin in much of the United States.'
     : esc(e.message);
   $('results').innerHTML = '<div class="note"><b>No ' + m + ' route.</b><br>' + why + '</div>';
+}
+
+/* ── live departures at the boarding stop ─────────────────── */
+async function departures(stopId, name){
+  const url = MOTIS + '/api/v1/stoptimes?stopId=' + encodeURIComponent(stopId) +
+    '&time=' + encodeURIComponent(new Date().toISOString()) + '&n=6&arriveBy=false';
+  const j = await NET.json(url, null, { tries:0, ms:12000, label:'Departure board' });
+  const rows = (j.stopTimes || j.departures || []).map(d => {
+    const t = d.place || d;
+    const when = t.departure || t.time || t.scheduledDeparture;
+    const sched = t.scheduledDeparture || null;
+    const delay = (sched && when) ? Math.round((new Date(when) - new Date(sched)) / 60000) : null;
+    return { when, delay, realTime: t.realTime === true,
+      line: (d.routeShortName || d.displayName || ''), headsign: d.headsign || '',
+      mode: transitLabel(d.mode) };
+  }).filter(r => r.when);
+  return { name, rows };
+}
+function renderDepartures(board){
+  const box = $('live');
+  if(!board || !board.rows.length){ box.hidden = true; return; }
+  box.hidden = false;
+  box.innerHTML = '<div class="livehead"><span class="dotlive"></span>Live departures · ' +
+    esc(board.name) + '</div>' +
+    board.rows.slice(0,5).map(r => {
+      const late = r.delay != null && r.delay !== 0;
+      return '<div class="dep"><b>' + esc(r.line || r.mode) + '</b>' +
+        '<span class="to">' + esc(r.headsign) + '</span>' +
+        '<span class="at' + (late ? (r.delay > 0 ? ' late' : ' early') : '') + '">' +
+        clock(r.when) + (late ? ' (' + (r.delay > 0 ? '+' : '') + r.delay + ')' : '') + '</span></div>';
+    }).join('');
+}
+async function refreshDepartures(it){
+  const box = $('live');
+  if(!it || it.mode !== 'transit'){ box.hidden = true; return; }
+  const leg = it.legs.find(l => l.kind === 'TRANSIT' && l.stopId);
+  if(!leg){ box.hidden = true; return; }
+  try{ renderDepartures(await departures(leg.stopId, leg.fromName)); }
+  catch(e){ box.hidden = true; }
 }
 
 /* ── rendering routes ─────────────────────────────────────── */
@@ -496,6 +554,10 @@ function renderOptions(){
       chain = '<div class="chain">' + parts.join('<span class="sepx">›</span>') + '</div>';
     }
     const when = it.depart ? clock(it.depart) + ' → ' + clock(it.arrive) : '';
+    const liveTag = it.live
+      ? '<span class="livetag"><span class="dotlive"></span>' +
+        (it.maxDelay ? (it.maxDelay > 0 ? it.maxDelay + ' min late' : Math.abs(it.maxDelay) + ' min early') : 'On time') +
+        '</span>' : '';
     const sum = it.mode === 'transit'
       ? (it.transfers === 0 ? 'Direct' : it.transfers + ' transfer' + (it.transfers > 1 ? 's' : ''))
       : (it.via || '') + (i === 0 && options.length > 1 ? ' · fastest' : '');
@@ -505,7 +567,7 @@ function renderOptions(){
         ? fmtDist(it.walkDistance || 0) + ' walking'
         : fmtDist(it.distance)) + '</span>' +
       (when ? '<span class="when">' + when + '</span>' : '') + '</div>' +
-      chain + (sum ? '<div class="sum">' + sum + '</div>' : '') +
+      chain + ((sum || liveTag) ? '<div class="sum">' + esc(sum) + (sum && liveTag ? ' · ' : '') + liveTag + '</div>' : '') +
       (it === current ? detailHtml(it) : '') + '</div>';
   }).join('');
   $('results').innerHTML = html;
@@ -513,7 +575,7 @@ function renderOptions(){
     el.addEventListener('click', ev => {
       if(ev.target.closest('.step') || ev.target.closest('.btn')) return;
       current = options[+el.dataset.i];
-      renderOptions(); paintRoute(current); fitRoute(current);
+      renderOptions(); paintRoute(current); fitRoute(current); refreshDepartures(current);
     });
   });
   const startBtn = $('startNav');
@@ -534,9 +596,12 @@ function detailHtml(it){
       const head = l.kind === 'WALK'
         ? 'Walk ' + fmtShort(l.duration || 0) + (l.toName ? ' to ' + esc(l.toName) : '')
         : esc(l.vehicle) + (l.line ? ' ' + esc(l.line) : '') + (l.headsign ? ' toward ' + esc(l.headsign) : '');
+      const dly = (l.delay != null && l.delay !== 0)
+        ? ' <span class="' + (l.delay > 0 ? 'late' : 'early') + '">' +
+          (l.delay > 0 ? '+' : '') + l.delay + ' min</span>' : (l.realTime ? ' <span class="ontime">on time</span>' : '');
       const sub = l.kind === 'WALK'
         ? fmtDist(l.distance || 0)
-        : clock(l.startTime) + ' ' + esc(l.fromName) + ' → ' + clock(l.endTime) + ' ' + esc(l.toName);
+        : clock(l.startTime) + dly + ' ' + esc(l.fromName) + ' → ' + clock(l.endTime) + ' ' + esc(l.toName);
       return '<div class="step"><div class="ic">' + svg(l.kind === 'WALK' ? ICON.WALK : ICON.TRANSIT) +
         '</div><div><div class="a">' + head + '</div><div class="b">' + sub + '</div></div></div>';
     }).join('');
@@ -743,7 +808,7 @@ const qUsed = () => +(store.get(qKey(), '0')) || 0;
 function qBump(){ const n = qUsed() + 1; store.set(qKey(), String(n)); stamp(); return n; }
 function addTraffic(){
   if(!ttKey || map.getSource('flow')) return;
-  const st = SKINS[skin].dark ? 'relative0-dark' : 'relative0';
+  const st = theme === 'dark' ? 'relative0-dark' : 'relative0';
   map.addSource('flow', { type:'raster', tileSize:256,
     tiles:['https://api.tomtom.com/traffic/map/4/tile/flow/' + st + '/{z}/{x}/{y}.png?key=' +
       encodeURIComponent(ttKey) + '&tileSize=256&thickness=4'] });
@@ -815,7 +880,7 @@ async function systemCheck(){
 /* ── wiring ───────────────────────────────────────────────── */
 bindField('from'); bindField('to');
 $('clearTo').onclick = () => { $('toInput').value=''; $('clearTo').hidden = true; trip.to = null;
-  if(markTo){ markTo.remove(); markTo = null; } paintRoute(null); $('results').innerHTML=''; hideSug(); };
+  if(markTo){ markTo.remove(); markTo = null; } paintRoute(null); emptyState(); hideSug(); };
 $('useGps').onclick = useGps;
 $('swapBtn').onclick = () => {
   const a = trip.from, b = trip.to;
@@ -830,30 +895,25 @@ $('swapBtn').onclick = () => {
 document.querySelectorAll('.mode').forEach(el => el.addEventListener('click', async () => {
   mode = el.dataset.mode; store.set('tern.mode', mode);
   document.querySelectorAll('.mode').forEach(x => x.classList.toggle('on', x === el));
-  if(!trip.from || !trip.to){ $('results').innerHTML = ''; return; }
+  if(!trip.from || !trip.to){ emptyState(); return; }
   $('results').innerHTML = '<div class="note">Finding routes…</div>';
   try{
     options = await planMode(mode);
     current = options[0];
-    renderOptions(); paintRoute(current); fitRoute(current);
+    renderOptions(); paintRoute(current); fitRoute(current); refreshDepartures(current);
   }catch(e){ options = []; current = null; paintRoute(null); renderError(mode, e); }
 }));
 document.querySelector('.mode[data-mode="' + mode + '"]').classList.add('on');
 
 $('panelToggle').onclick = () => $('panel').classList.toggle('hid');
-function setSkin(next){
-  if(!SKINS[next] || next === skin) return;
-  skin = next; store.set('tern.skin', skin);
-  document.documentElement.setAttribute('data-skin', skin);
-  document.querySelectorAll('#skinbar button').forEach(b => b.classList.toggle('on', b.dataset.skin === skin));
+$('themeBtn').onclick = () => {
+  theme = theme === 'light' ? 'dark' : 'light';
+  store.set('tern.theme', theme);
+  document.documentElement.setAttribute('data-theme', theme);
   const had = !!map.getSource('flow');
-  map.setStyle(SKINS[skin].map);
+  map.setStyle(STYLE[theme]);
   map.once('styledata', () => { if(!had) removeTraffic(); addLayers(); });
-}
-document.querySelectorAll('#skinbar button').forEach(b =>
-  b.addEventListener('click', () => setSkin(b.dataset.skin)));
-document.querySelectorAll('#skinbar button').forEach(b =>
-  b.classList.toggle('on', b.dataset.skin === skin));
+};
 $('locBtn').onclick = () => { if(!me) useGps(); else toggleFollow(); };
 $('tiltBtn').onclick = () => {
   const on = map.getPitch() < 20;
@@ -899,6 +959,7 @@ addEventListener('online', () => toast('Back online', 2200));
 addEventListener('beforeunload', () => { if(watch != null && navigator.geolocation) navigator.geolocation.clearWatch(watch); });
 
 $('ttKey').value = ttKey; keyHint(); stamp();
+emptyState();
 $('trafficBtn').classList.toggle('on', trafficOn && !!ttKey);
 try{
   const t = JSON.parse(store.get('tern.to', 'null'));
