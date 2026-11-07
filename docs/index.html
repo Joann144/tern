@@ -781,6 +781,7 @@ async function routeTransit(a, b){
       : (new Date(it.endTime) - new Date(it.startTime))/1000;
     return { mode:'transit', duration:dur,
       distance: legs.reduce((s,l) => s + (l.distance || 0), 0),
+      walkDistance: legs.filter(l => l.kind === 'WALK').reduce((s,l) => s + (l.distance || 0), 0),
       depart: it.startTime, arrive: it.endTime,
       transfers: Math.max(0, legs.filter(l => l.kind === 'TRANSIT').length - 1),
       source:'Transitous', legs };
@@ -901,7 +902,9 @@ function renderOptions(){
       : '';
     return '<div class="opt' + sel + '" data-i="' + i + '">' +
       '<div class="top"><span class="dur">' + fmtDur(it.duration) + '</span>' +
-      '<span class="dist">' + fmtDist(it.distance) + '</span>' +
+      '<span class="dist">' + (it.mode === 'transit'
+        ? fmtDist(it.walkDistance || 0) + ' walking'
+        : fmtDist(it.distance)) + '</span>' +
       (when ? '<span class="when">' + when + '</span>' : '') + '</div>' +
       chain + (sum ? '<div class="sum">' + sum + '</div>' : '') +
       (it === current ? detailHtml(it) : '') + '</div>';

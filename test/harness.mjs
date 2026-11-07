@@ -192,6 +192,8 @@ chk(tr[0].legs[0].coords.length===2, 'walk leg geometry decoded');
 chk(tr[0].legs[1].color==='#1f6feb', 'route colour honoured, got ' + tr[0].legs[1].color);
 chk(tr[0].legs[2].toName==='Freedom Park' || tr[0].legs[2].toName==='your destination',
     'MOTIS END placeholder replaced, got ' + tr[0].legs[2].toName);
+chk(Math.round(tr[0].walkDistance)===1040, 'walking distance summed from walk legs only, got ' + Math.round(tr[0].walkDistance));
+console.log('   itinerary 1 walking: ' + T.fmtDist(tr[0].walkDistance) + ' of ' + T.fmtDist(tr[0].distance) + ' total');
 const arrOrder = tr.map(x => +new Date(x.arrive));
 chk(arrOrder.every((v,i)=>i===0||v>=arrOrder[i-1]), 'itineraries sorted by arrival time');
 console.log('   arrival order: ' + tr.map(x=>new Date(x.arrive).toISOString().slice(11,16)).join(' , '));
