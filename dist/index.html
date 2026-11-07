@@ -357,6 +357,38 @@ let trafficOn=ls.get('tern.traffic','0')==='1';
 
 document.documentElement.setAttribute('data-t',theme);
 
+/* ---------------- network: every call times out and retries ---------------- */
+const NET={
+  async json(url,opt,cfg){
+    cfg=cfg||{};
+    const tries=cfg.tries==null?2:cfg.tries, ms=cfg.ms||12000, label=cfg.label||'Request';
+    let last;
+    for(let a=0;a<=tries;a++){
+      const ac=new AbortController();
+      const timer=setTimeout(()=>ac.abort(),ms);
+      let sig=ac.signal;
+      if(opt&&opt.signal&&typeof AbortSignal!=='undefined'&&AbortSignal.any){
+        try{ sig=AbortSignal.any([opt.signal,ac.signal]); }catch(e){}
+      }
+      try{
+        const r=await fetch(url,Object.assign({},opt,{signal:sig}));
+        clearTimeout(timer);
+        if(r.status===429) throw new Error(label+' is rate limited right now (429)');
+        if(r.status===403) throw new Error(label+' rejected the key (403)');
+        if(!r.ok) throw new Error(label+' returned HTTP '+r.status);
+        return await r.json();
+      }catch(e){
+        clearTimeout(timer);
+        if(opt&&opt.signal&&opt.signal.aborted) throw e;          // caller cancelled, do not retry
+        last = (e.name==='AbortError') ? new Error(label+' timed out after '+(ms>=1000?Math.round(ms/1000)+'s':ms+'ms')) : e;
+        if(!navigator.onLine) { last=new Error('You are offline'); break; }
+        if(a<tries) await new Promise(f=>setTimeout(f,400*Math.pow(2,a)));
+      }
+    }
+    throw last;
+  }
+};
+
 /* ---------------- formatting ---------------- */
 const fmtD=m=>IMP
   ? (m<160?Math.round(m*3.28084)+' ft':(m/1609.34).toFixed(m<16093?1:0)+' mi')
@@ -452,7 +484,18 @@ function addOverlays(){
   if(incData) map.getSource('inc').setData(incData);
 }
 const fc=()=>({type:'FeatureCollection',features:[]});
-map.on('load',()=>{ addOverlays(); wireMapClicks(); locate(true); });
+map.on('load',()=>{
+  addOverlays(); wireMapClicks(); locate(true);
+  try{
+    const saved=JSON.parse(ls.get('tern.dest','null'));
+    if(saved&&isFinite(saved.lat)&&isFinite(saved.lon)){
+      dest=saved;
+      destMk=new maplibregl.Marker({element:pinEl(),anchor:'bottom'})
+        .setLngLat([saved.lon,saved.lat]).addTo(map);
+      showPlace();
+    }
+  }catch(e){}
+});
 
 /* ---------------- traffic ---------------- */
 function addTraffic(){
@@ -475,6 +518,15 @@ const CAT={0:['Unknown','#8b949f'],1:['Accident','#e8503d'],2:['Fog','#8b949f'],
   14:['Broken down vehicle','#e8743d']};
 const MAG={0:'Unknown',1:'Minor',2:'Moderate',3:'Major',4:'Closure'};
 let incData=null, incTimer=null, incBusy=false, lastInc=0;
+const QUOTA=2500;
+function quotaKey(){ return 'tern.tt.'+new Date().toISOString().slice(0,10); }
+function quotaUsed(){ return +(ls.get(quotaKey(),'0'))||0; }
+function quotaBump(){
+  const n=quotaUsed()+1; ls.set(quotaKey(),String(n));
+  if(n===Math.floor(QUOTA*0.8)) toast('TomTom free tier: '+n+' of '+QUOTA+' requests used today',6000);
+  if(n===QUOTA) toast('TomTom free tier used up for today. Traffic will resume tomorrow.',7000);
+  stamp(); return n;
+}
 
 function bboxKm2(b){
   const dLat=(b.getNorth()-b.getSouth())*111.32;
@@ -483,6 +535,9 @@ function bboxKm2(b){
 }
 async function loadIncidents(quiet){
   if(!TTKEY||!trafficOn||incBusy) return;
+  if(document.hidden) return;                       // do not burn quota in a background tab
+  if(quotaUsed()>=QUOTA){ if(!quiet) toast('TomTom free tier used up for today'); return; }
+  if(!navigator.onLine){ if(!quiet) toast('You are offline'); return; }
   if(map.getZoom()<9){ if(!quiet) toast('Zoom in to load live incidents'); return; }
   const b=map.getBounds();
   if(bboxKm2(b)>9000){ if(!quiet) toast('Zoom in a little, the area is too large for the incident feed'); return; }
@@ -493,10 +548,8 @@ async function loadIncidents(quiet){
     '&bbox='+[b.getWest(),b.getSouth(),b.getEast(),b.getNorth()].map(v=>v.toFixed(6)).join(',')+
     '&fields='+fields+'&language=en-GB&timeValidityFilter=present';
   try{
-    const r=await fetch(url);
-    if(r.status===403) throw new Error('TomTom rejected the key (403). Check it is correct and that Traffic is enabled on it.');
-    if(!r.ok) throw new Error('TomTom returned '+r.status);
-    const j=await r.json();
+    quotaBump();
+    const j=await NET.json(url,null,{tries:1,ms:12000,label:'Traffic'});
     const feats=(j.incidents||[]).filter(Boolean).map(f=>{
       const p=f.properties||{}, cat=CAT[p.iconCategory]||CAT[0];
       return {type:'Feature',geometry:f.geometry,properties:{
@@ -514,7 +567,11 @@ async function loadIncidents(quiet){
 }
 function stamp(){
   const el=$('upd'); if(!el) return;
-  el.textContent = lastInc? 'traffic '+new Date(lastInc).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
+  const bits=[];
+  if(lastInc) bits.push('traffic '+new Date(lastInc).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));
+  if(TTKEY) bits.push(quotaUsed()+'/'+QUOTA+' today');
+  if(!navigator.onLine) bits.push('OFFLINE');
+  el.innerHTML=bits.map(b=>b==='OFFLINE'?'<b>OFFLINE</b>':b).join('  \u00b7  ');
 }
 function showIncident(f){
   const p=f.properties;
@@ -531,7 +588,14 @@ function showIncident(f){
 }
 let incDeb;
 map.on('moveend',()=>{ clearTimeout(incDeb); incDeb=setTimeout(()=>loadIncidents(true),700); });
-setInterval(()=>loadIncidents(true),60000);
+incTimer=setInterval(()=>loadIncidents(true),60000);
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&trafficOn) loadIncidents(true); });
+addEventListener('offline',()=>{ stamp(); toast('You went offline. Tiles, search and routing will fail until you are back.',6000); });
+addEventListener('online',()=>{ stamp(); toast('Back online',2500); if(trafficOn) loadIncidents(true); });
+addEventListener('beforeunload',()=>{
+  if(watchId!=null&&navigator.geolocation) navigator.geolocation.clearWatch(watchId);
+  if(incTimer) clearInterval(incTimer);
+});
 
 /* ---------------- search ---------------- */
 let hits=[], hsel=-1, sdeb, sabort;
@@ -550,9 +614,7 @@ async function geocode(v){
   try{
     const u='https://photon.komoot.io/api?q='+encodeURIComponent(v)+'&limit=7&lang=en&lat='+
       c.lat.toFixed(4)+'&lon='+c.lng.toFixed(4);
-    const r=await fetch(u,{signal:sabort.signal});
-    if(!r.ok) throw new Error('search '+r.status);
-    const j=await r.json();
+    const j=await NET.json(u,{signal:sabort.signal},{tries:1,ms:8000,label:'Search'});
     hits=(j.features||[]).map(f=>{
       const p=f.properties;
       return {name:p.name||p.street||'Unnamed',
@@ -595,7 +657,10 @@ function pick(r){
   setDest({name:r.name,detail:r.detail,lon:r.lon,lat:r.lat});
 }
 function setDest(p){
+  if(!p||!isFinite(p.lat)||!isFinite(p.lon)||Math.abs(p.lat)>90||Math.abs(p.lon)>180){
+    toast('That place has no usable coordinates'); return; }
   dest=p;
+  ls.set('tern.dest',JSON.stringify(p));
   if(destMk) destMk.remove();
   destMk=new maplibregl.Marker({element:pinEl(),anchor:'bottom'}).setLngLat([p.lon,p.lat]).addTo(map);
   map.flyTo({center:[p.lon,p.lat],zoom:Math.max(map.getZoom(),15),speed:1.4,essential:true});
@@ -612,8 +677,9 @@ function wireMapClicks(){
 async function dropPin(lon,lat){
   setDest({name:'Dropped pin',detail:lat.toFixed(5)+', '+lon.toFixed(5),lon,lat});
   try{
-    const r=await fetch('https://photon.komoot.io/reverse?lat='+lat+'&lon='+lon+'&limit=1&lang=en');
-    const j=await r.json(), f=(j.features||[])[0];
+    const j=await NET.json('https://photon.komoot.io/reverse?lat='+lat+'&lon='+lon+'&limit=1&lang=en',
+      null,{tries:1,ms:8000,label:'Address lookup'});
+    const f=(j.features||[])[0];
     if(f&&dest){
       const p=f.properties;
       dest.name=p.name||[p.housenumber,p.street].filter(Boolean).join(' ')||'Dropped pin';
@@ -757,8 +823,8 @@ function osrmText(s){
 async function osrm(a,b){
   const u='https://router.project-osrm.org/route/v1/driving/'+a.lon+','+a.lat+';'+b.lon+','+b.lat+
     '?overview=full&geometries=geojson&steps=true';
-  const r=await fetch(u); if(!r.ok) throw new Error('Routing service returned '+r.status);
-  const j=await r.json(); const rt=(j.routes||[])[0];
+  const j=await NET.json(u,null,{tries:2,ms:15000,label:'Router'});
+  const rt=(j.routes||[])[0];
   if(!rt) throw new Error('No driving route found between those points');
   const steps=[];
   rt.legs.forEach(l=>l.steps.forEach(s=>{
@@ -771,10 +837,10 @@ async function osrm(a,b){
 async function valhalla(a,b,costing){
   const body={locations:[{lat:a.lat,lon:a.lon},{lat:b.lat,lon:b.lon}],costing,
     directions_options:{units:IMP?'miles':'kilometers',language:'en-US'}};
-  const r=await fetch('https://valhalla1.openstreetmap.de/route',
-    {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  if(!r.ok) throw new Error('Routing service returned '+r.status);
-  const j=await r.json(), t=j.trip;
+  const j=await NET.json('https://valhalla1.openstreetmap.de/route',
+    {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},
+    {tries:2,ms:20000,label:'Backup router'});
+  const t=j.trip;
   if(!t||!t.legs) throw new Error('No route found for that mode');
   let coords=[], steps=[];
   const unit=IMP?1609.34:1000;

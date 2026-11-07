@@ -1,5 +1,8 @@
 import fs from 'fs';
-const app=fs.readFileSync('/home/claude/nav/app.js','utf8');
+import path from 'path';
+import {fileURLToPath} from 'url';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const app=fs.readFileSync(path.join(root,'src/app.js'),'utf8');
 
 /* ---------- stubs ---------- */
 const store={};
