@@ -172,6 +172,7 @@ const probe = `;globalThis.T = { fmtDist, fmtDur, fmtShort, decodePoly, geocode,
   setPlace, trip, SERVICES, hav, addLayers, paintAlts, viaLabel, departures, refreshDepartures, emptyState,
   needStart, recents, rememberRecent, adoptKey, get ttKeyNow(){return ttKey},
   loadIncidents, showIncident, clearIncidents, get incNow(){return incData},
+  gpsBanner, recentreNav, arrive, paintNav,
   set trafficFlag(v){trafficOn=v},
   setOptions:(o,c)=>{ options=o; current=c; },
   get options(){return options}, get current(){return current}, get nav(){return nav}, set nav(v){nav=v},
@@ -381,8 +382,38 @@ console.log('   camera, no GPS -> ' + (camNoGps && camNoGps.center ? camNoGps.ce
 console.log('   camera, GPS fix -> ' + (camGps && camGps.center ? camGps.center.map(v=>v.toFixed(4)).join(', ') : 'NOT CENTRED'));
 chk(camNoGps && camNoGps.center, 'Start centres on the first turn when there is no fix');
 chk(camGps && camGps.center && Math.abs(camGps.center[1] - A.lat) < 1e-6, 'Start centres on you when there is a fix');
+
+// the turn after this one
+T.paintNav();
+console.log('   then-line: ' + document.getElementById('navThenText').textContent);
+chk(/^Then /.test(document.getElementById('navThenText').textContent), 'shows the following turn');
+chk(document.getElementById('navThen').hidden === false, 'then-line visible mid route');
+
+// progress bar advances
+const p0 = document.getElementById('navProgressFill').style.width;
+T.navStep(1); T.navStep(1);
+const p1 = document.getElementById('navProgressFill').style.width;
+console.log('   progress: ' + p0 + ' -> ' + p1);
+chk(parseFloat(p1) > parseFloat(p0), 'progress bar advances with the route');
+
+// arrival
+const lastStep = d.legs[0].steps[d.legs[0].steps.length-1];
+T.me = { lat:lastStep.lat, lon:lastStep.lon };
+T.paintNav();
+console.log('   at destination -> arrived card: ' + (document.getElementById('arrived').hidden ? 'HIDDEN' : 'shown') +
+  ', nav bar: ' + (document.getElementById('navBar').hidden ? 'hidden' : 'SHOWN'));
+chk(document.getElementById('arrived').hidden === false, 'arrival card appears at the destination');
+chk(document.getElementById('navBar').hidden === true, 'nav bar yields to the arrival card');
+
+// gps banner wording
+T.gpsBanner('denied');
+console.log('   gps denied banner: "' + document.getElementById('gpsTitle').textContent + '"');
+chk(/blocked/i.test(document.getElementById('gpsTitle').textContent), 'denied state explained');
+T.gpsBanner('granted');
+chk(document.getElementById('gpsbar').hidden === true, 'banner hides once granted');
 console.log('   start: step ' + (T.nav.i+1) + ' — ' + E['navInstr'].textContent + ' in ' + E['navDist'].textContent);
 console.log('   arrive ' + E['navEta'].textContent + ', left ' + E['navLeft'].textContent);
+T.endNav(); T.me = { lat:A.lat, lon:A.lon }; T.startNav(d);   // fresh run for the manual checks
 T.navStep(1);
 chk(T.nav.i===1, 'manual next');
 T.navStep(-1); chk(T.nav.i===0, 'manual back');

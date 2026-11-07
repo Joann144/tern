@@ -771,11 +771,41 @@ function showMe(lat, lon){
     meMk = new maplibregl.Marker({ element:d }).setLngLat([lon, lat]).addTo(map);
   } else meMk.setLngLat([lon, lat]);
 }
+function gpsBanner(state){
+  const bar = $('gpsbar'), t = $('gpsTitle'), b = $('gpsBody'), fix = $('gpsFix');
+  if(state === 'granted'){ bar.hidden = true; return; }
+  bar.hidden = false; fix.hidden = false;
+  if(state === 'denied'){
+    t.textContent = 'Location is blocked';
+    b.textContent = 'Click the icon at the left of the address bar, set Location to Allow, then press Retry. ' +
+      'Until then you can tap the map to set a starting point.';
+    fix.textContent = 'Retry';
+  } else if(state === 'unsupported'){
+    t.textContent = 'Location is unavailable';
+    b.textContent = 'This browser will not share a position. Tap the map to set a starting point.';
+    fix.hidden = true;
+  } else {
+    t.textContent = 'Turn on location';
+    b.textContent = 'Routes then start from where you are, and navigation follows you as you move.';
+    fix.textContent = 'Turn on';
+  }
+  fix.onclick = () => { fix.textContent = 'Locating…'; useGps(); };
+}
+function checkGpsPermission(){
+  if(!navigator.geolocation){ gpsBanner('unsupported'); return; }
+  if(navigator.permissions && navigator.permissions.query){
+    navigator.permissions.query({ name:'geolocation' }).then(st => {
+      gpsBanner(st.state);
+      st.onchange = () => { gpsBanner(st.state); if(st.state === 'granted') useGps(); };
+    }).catch(() => gpsBanner('prompt'));
+  } else gpsBanner('prompt');
+}
 function initialLocate(){
+  checkGpsPermission();
   if(!navigator.geolocation) return;
   navigator.geolocation.getCurrentPosition(p => {
     showMe(p.coords.latitude, p.coords.longitude);
-    $('locBtn').classList.add('live');
+    $('locBtn').classList.add('live'); gpsBanner('granted');
     if(!trip.from){
       trip.from = { name:'Your location', detail:'', lat:me.lat, lon:me.lon };
       $('fromInput').value = 'Your location';
@@ -788,9 +818,10 @@ function useGps(){
   if(!navigator.geolocation){ toast('This browser will not share a location'); return; }
   navigator.geolocation.getCurrentPosition(p => {
     showMe(p.coords.latitude, p.coords.longitude);
-    $('locBtn').classList.add('live');
+    $('locBtn').classList.add('live'); gpsBanner('granted');
     setPlace('from', { name:'Your location', detail:'', lat:me.lat, lon:me.lon });
   }, err => {
+    gpsBanner(err.code === 1 ? 'denied' : 'prompt');
     toast(err.code === 1
       ? 'Location is blocked for this site. Allow it in the padlock menu, or click the map to set a start point.'
       : 'Could not get a GPS fix. Click the map to set a start point instead.', 6000);
@@ -820,7 +851,9 @@ function toggleFollow(){
 let nav = null;
 function startNav(it){
   if(!it || !it.legs[0] || !it.legs[0].steps.length) return;
-  nav = { steps: it.legs[0].steps, i:0, total: it.duration, dist: it.distance, via: it.via || '' };
+  nav = { steps: it.legs[0].steps, i:0, total: it.duration, dist: it.distance, via: it.via || '',
+          dest: (trip.to && trip.to.name) || 'your destination', done:false };
+  $('arrived').hidden = true; $('navBar').hidden = false;
   $('nav').hidden = false;
   $('panel').classList.add('hid');
   const first = nav.steps.find(s => s.lat != null);
@@ -828,12 +861,28 @@ function startNav(it){
   map.easeTo(Object.assign({ pitch:60, zoom:17, duration:900 },
     centre ? { center: centre } : {}));
   if(!following) toggleFollow();
-  if(!me) toast('No GPS fix yet, so the view starts at the first turn. Allow location to follow along.', 5500);
   paintNav();
 }
 function endNav(){
-  nav = null; $('nav').hidden = true; $('panel').classList.remove('hid');
+  nav = null;
+  $('nav').hidden = true; $('arrived').hidden = true; $('recentre').hidden = true;
+  $('panel').classList.remove('hid');
   map.easeTo({ pitch:0, duration:700 });
+}
+function recentreNav(){
+  if(!nav) return;
+  const s = nav.steps[nav.i];
+  const c = me ? [me.lon, me.lat] : (s && s.lon != null ? [s.lon, s.lat] : null);
+  if(c) map.easeTo({ center:c, zoom:17, pitch:60, duration:650 });
+  $('recentre').hidden = true;
+}
+function arrive(){
+  if(!nav || nav.done) return;
+  nav.done = true;
+  $('arrivedWhere').textContent = nav.dest;
+  $('arrived').hidden = false;
+  $('navBar').hidden = true;
+  $('navThen').hidden = true;
 }
 function paintNav(){
   if(!nav) return;
@@ -841,6 +890,12 @@ function paintNav(){
   $('navIcon').innerHTML = turnIcon(s.text);
   $('navInstr').textContent = s.text;
   $('navMeta').textContent = 'Step ' + (nav.i+1) + ' of ' + nav.steps.length + (s.road ? ' · ' + s.road : '');
+  const nxt = nav.steps[nav.i + 1];
+  if(nxt){
+    $('navThen').hidden = false;
+    $('navThenIcon').innerHTML = turnIcon(nxt.text);
+    $('navThenText').textContent = 'Then ' + nxt.text.charAt(0).toLowerCase() + nxt.text.slice(1);
+  } else $('navThen').hidden = true;
   let d = (me && s.lat != null) ? hav(me, { lat:s.lat, lon:s.lon }) : s.dist;
   $('navDist').textContent = d != null ? fmtDist(d) : '—';
   let left = 0;
@@ -853,6 +908,10 @@ function paintNav(){
   $('navSpeed').textContent = (speed != null && following) ? Math.round(speed) + (IMP() ? ' mph' : ' kph') : '—';
   $('navPrev').disabled = nav.i === 0;
   $('navNext').disabled = nav.i >= nav.steps.length - 1;
+  const pct = nav.dist ? Math.max(0, Math.min(100, (1 - left / nav.dist) * 100)) : 0;
+  $('navProgressFill').style.width = pct.toFixed(1) + '%';
+  const last = nav.steps[nav.steps.length - 1];
+  if(me && last && last.lat != null && hav(me, { lat:last.lat, lon:last.lon }) < 45) arrive();
 }
 function navStep(d){
   if(!nav) return;
@@ -1095,6 +1154,9 @@ function keyHint(){
   $('keyHint').className = 'hint' + (ttKey ? ' ok' : '');
 }
 $('navStop').onclick = endNav;
+$('recentre').onclick = recentreNav;
+$('arrivedDone').onclick = endNav;
+map.on('dragstart', () => { if(nav && !nav.done) $('recentre').hidden = false; });
 $('navPrev').onclick = () => navStep(-1);
 $('navNext').onclick = () => navStep(1);
 addEventListener('keydown', e => {

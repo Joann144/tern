@@ -31,6 +31,12 @@
     </button>
   </header>
 
+  <div id="gpsbar" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></svg>
+    <div><b id="gpsTitle">Location is off</b><span id="gpsBody"></span></div>
+    <button id="gpsFix">Turn on</button>
+  </div>
+
   <div id="planner">
     <div class="fields">
       <div class="rail">
@@ -115,19 +121,36 @@
       <div id="navMeta"></div>
     </div>
   </div>
+  <div id="navThen" hidden><span id="navThenIcon"></span><span id="navThenText"></span></div>
+
+  <button id="recentre" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></svg>
+    Re-centre
+  </button>
+
   <div id="navBar">
-    <div class="trip" id="navTrip"></div>
-    <div class="stat"><b id="navTimeLeft">—</b><span>Time left</span></div>
-    <div class="stat"><b id="navEta">—</b><span>Arrive</span></div>
-    <div class="stat"><b id="navLeft">—</b><span>Distance</span></div>
-    <div class="stat"><b id="navSpeed">—</b><span>Speed</span></div>
-    <button class="nb" id="navPrev" title="Previous (←)">Back</button>
-    <button class="nb primary" id="navNext" title="Next (→)">Next</button>
-    <button class="nb stop" id="navStop">End</button>
+    <div id="navProgress"><i id="navProgressFill"></i></div>
+    <div class="row1">
+      <div class="stat big"><b id="navTimeLeft">—</b><span>Time left</span></div>
+      <div class="stat"><b id="navEta">—</b><span>Arrive</span></div>
+      <div class="stat"><b id="navLeft">—</b><span>Distance</span></div>
+      <div class="stat"><b id="navSpeed">—</b><span>Speed</span></div>
+      <button class="nb stop" id="navStop">End</button>
+    </div>
+    <div class="row2">
+      <span class="trip" id="navTrip"></span>
+      <button class="nb" id="navPrev" title="Previous turn">Back</button>
+      <button class="nb primary" id="navNext" title="Next turn">Next turn</button>
+    </div>
+  </div>
+
+  <div id="arrived" hidden>
+    <div class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></div>
+    <div class="who"><b>You have arrived</b><span id="arrivedWhere"></span></div>
+    <button class="nb primary" id="arrivedDone">Done</button>
   </div>
 </div>
 
-<!-- ───────────────── system check ───────────────── -->
 <div id="diag" hidden>
   <div class="sheet">
     <button class="ghost close" id="diagClose" aria-label="Close">
