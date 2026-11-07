@@ -14,7 +14,7 @@ for token, value in parts.items():
     if token not in shell:
         sys.exit('missing placeholder: ' + token)
     shell = shell.replace(token, value.replace('</script', '<\\/script'))
-out = root/'dist/index.html'
+out = root/'docs/index.html'
 out.parent.mkdir(exist_ok=True)
 out.write_text(shell, encoding='utf-8')
 print('built', out, round(len(shell)/1024), 'KB')

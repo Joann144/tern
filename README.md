@@ -21,12 +21,12 @@ Built on OpenStreetMap data through open services, with optional live traffic fr
 
 ## Running it
 
-Open `dist/index.html` in Chrome, Edge or Firefox.
+Open `docs/index.html` in Chrome, Edge or Firefox.
 
 **Serve it instead of opening the file directly if you want GPS to work properly.** Browsers treat a `file://` page as having no origin, so Chrome will not remember location permission and re-prompts every load.
 
 ```bash
-cd dist
+cd docs
 python -m http.server 8000
 # then open http://localhost:8000
 ```
@@ -44,7 +44,7 @@ The key is stored in that browser's localStorage only. It is never sent anywhere
 
 ## Building
 
-`dist/index.html` is generated. Edit the files in `src/`, then:
+`docs/index.html` is generated. Edit the files in `src/`, then:
 
 ```bash
 python build.py
@@ -77,9 +77,9 @@ src/shell.html   markup and element ids
 src/style.css    all styling, light and dark themes
 src/app.js       all application logic
 vendor/          MapLibre GL JS 5.24.0, BSD-3-Clause
-build.py         inlines everything into dist/index.html
+build.py         inlines everything into docs/index.html
 test/harness.mjs headless test suite
-dist/index.html  the built, shippable file
+docs/index.html  the built, shippable file
 ```
 
 ## Keyboard
