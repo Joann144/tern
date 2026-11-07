@@ -7,7 +7,122 @@
 
 const $ = id => document.getElementById(id);
 const OFM = 'https://tiles.openfreemap.org';
-const STYLE = { light: OFM + '/styles/liberty', dark: OFM + '/styles/dark' };
+/* ── custom cartography, so the map does not look stock ───── */
+const PAL = {
+  dark:{
+    bg:'#10141b', land:'#10141b', wood:'#15201a', park:'#15221b', sand:'#1d1f1c',
+    water:'#0b2331', river:'#103043',
+    bldgLo:'#1a202a', bldgHi:'#2b3542',
+    casing:'#0b0e14', minor:'#222935', mid:'#2d3543', major:'#3d4555',
+    moto:'#6d5527', motoHi:'#9a7a33',
+    rail:'#1d232d', border:'#2c3443',
+    label:'#c9d4e2', halo:'#080b11', labelDim:'#8694a7',
+    poi:'#6f7f94', poiText:'#93a2b6', waterLabel:'#3f7fa0'
+  },
+  light:{
+    bg:'#f5f3ee', land:'#f5f3ee', wood:'#dde7d4', park:'#dfeadb', sand:'#efe8d8',
+    water:'#bfdcea', river:'#a8cfe2',
+    bldgLo:'#e8e3d9', bldgHi:'#ddd6c9',
+    casing:'#d8d3c8', minor:'#ffffff', mid:'#ffffff', major:'#fdf6e8',
+    moto:'#f3cf96', motoHi:'#e9bd73',
+    rail:'#ded8cc', border:'#c9c2b4',
+    label:'#262d38', halo:'#f7f5f1', labelDim:'#5d6673',
+    poi:'#8d7f66', poiText:'#5a5245', waterLabel:'#5b8aa3'
+  }
+};
+function roadLayer(id, classes, color, widths, minzoom){
+  return { id, type:'line', source:'omt', 'source-layer':'transportation', minzoom: minzoom || 0,
+    filter:['match',['get','class'], classes, true, false],
+    layout:{ 'line-cap':'round','line-join':'round' },
+    paint:{ 'line-color':color,
+      'line-width':['interpolate',['exponential',1.5],['zoom'],5,widths[0],12,widths[1],18,widths[2]] } };
+}
+function mapStyle(mode){
+  const c = PAL[mode];
+  return {
+    version:8, name:'Tern ' + mode,
+    glyphs: OFM + '/fonts/{fontstack}/{range}.pbf',
+    sprite: OFM + '/sprites/ofm_f384/ofm',
+    sources:{ omt:{ type:'vector', url: OFM + '/planet' } },
+    light:{ anchor:'viewport', color:'#ffffff', intensity: mode === 'dark' ? 0.28 : 0.42 },
+    layers:[
+      { id:'bg', type:'background', paint:{ 'background-color': c.bg } },
+      { id:'landcover', type:'fill', source:'omt', 'source-layer':'landcover',
+        filter:['match',['get','class'],['wood','grass','scrub'],true,false],
+        paint:{ 'fill-color': c.wood, 'fill-opacity': mode === 'dark' ? 0.75 : 0.9 } },
+      { id:'sand', type:'fill', source:'omt', 'source-layer':'landcover',
+        filter:['match',['get','class'],['sand','farmland'],true,false],
+        paint:{ 'fill-color': c.sand, 'fill-opacity':0.55 } },
+      { id:'park', type:'fill', source:'omt', 'source-layer':'park',
+        paint:{ 'fill-color': c.park, 'fill-opacity':0.8 } },
+      { id:'water', type:'fill', source:'omt', 'source-layer':'water',
+        paint:{ 'fill-color': c.water } },
+      { id:'waterway', type:'line', source:'omt', 'source-layer':'waterway',
+        paint:{ 'line-color': c.river,
+          'line-width':['interpolate',['linear'],['zoom'],8,0.6,16,3.4] } },
+      { id:'rail', type:'line', source:'omt', 'source-layer':'transportation', minzoom:11,
+        filter:['==',['get','class'],'rail'],
+        paint:{ 'line-color': c.rail, 'line-dasharray':[3,2],
+          'line-width':['interpolate',['linear'],['zoom'],11,0.6,18,2.2] } },
+      roadLayer('r-path',['path','track','pedestrian'], c.minor, [0,0.5,2.4], 13),
+      { id:'r-casing', type:'line', source:'omt', 'source-layer':'transportation',
+        filter:['match',['get','class'],['minor','service','secondary','tertiary','primary','trunk','motorway'],true,false],
+        layout:{ 'line-cap':'round','line-join':'round' },
+        paint:{ 'line-color': c.casing,
+          'line-width':['interpolate',['exponential',1.5],['zoom'],5,1.4,12,5,18,22] } },
+      roadLayer('r-minor',['minor','service'], c.minor, [0,1.1,7]),
+      roadLayer('r-mid',['secondary','tertiary'], c.mid, [0.3,2.1,12]),
+      roadLayer('r-major',['primary','trunk'], c.major, [0.5,2.9,16]),
+      { id:'r-moto-glow', type:'line', source:'omt', 'source-layer':'transportation',
+        filter:['==',['get','class'],'motorway'],
+        paint:{ 'line-color': c.motoHi, 'line-blur':6, 'line-opacity': mode === 'dark' ? 0.4 : 0.25,
+          'line-width':['interpolate',['exponential',1.5],['zoom'],5,2,12,9,18,26] } },
+      roadLayer('r-moto',['motorway'], c.moto, [0.9,3.6,19]),
+      { id:'building', type:'fill-extrusion', source:'omt', 'source-layer':'building', minzoom:14,
+        paint:{
+          'fill-extrusion-color':['interpolate',['linear'],['get','render_height'],
+            0, c.bldgLo, 30, c.bldgLo, 120, c.bldgHi],
+          'fill-extrusion-height':['interpolate',['linear'],['zoom'],14,0,15.5,['coalesce',['get','render_height'],6]],
+          'fill-extrusion-base':['coalesce',['get','render_min_height'],0],
+          'fill-extrusion-opacity': mode === 'dark' ? 0.92 : 0.82,
+          'fill-extrusion-vertical-gradient':true } },
+      { id:'boundary', type:'line', source:'omt', 'source-layer':'boundary',
+        filter:['<=',['get','admin_level'],4],
+        paint:{ 'line-color': c.border, 'line-dasharray':[4,3], 'line-width':0.9 } },
+      { id:'poi-dot', type:'circle', source:'omt', 'source-layer':'poi', minzoom:15,
+        filter:['<=',['get','rank'],24],
+        paint:{ 'circle-radius':['interpolate',['linear'],['zoom'],15,2,18,3.4],
+          'circle-color': c.poi, 'circle-opacity':0.9 } },
+      { id:'poi-label', type:'symbol', source:'omt', 'source-layer':'poi', minzoom:15.5,
+        filter:['<=',['get','rank'],18],
+        layout:{ 'text-field':['get','name'], 'text-font':['Noto Sans Regular'],
+          'text-size':['interpolate',['linear'],['zoom'],15.5,10,18,12],
+          'text-anchor':'left', 'text-offset':[0.6,0], 'text-max-width':9,
+          'text-optional':true },
+        paint:{ 'text-color': c.poiText, 'text-halo-color': c.halo, 'text-halo-width':1.2 } },
+      { id:'road-label', type:'symbol', source:'omt', 'source-layer':'transportation_name', minzoom:13,
+        layout:{ 'symbol-placement':'line', 'text-field':['get','name'],
+          'text-font':['Noto Sans Regular'], 'text-letter-spacing':0.02,
+          'text-size':['interpolate',['linear'],['zoom'],13,10,18,13] },
+        paint:{ 'text-color': c.labelDim, 'text-halo-color': c.halo, 'text-halo-width':1.3 } },
+      { id:'water-label', type:'symbol', source:'omt', 'source-layer':'water_name',
+        layout:{ 'text-field':['get','name'], 'text-font':['Noto Sans Italic'],
+          'text-size':12, 'text-max-width':7 },
+        paint:{ 'text-color': c.waterLabel, 'text-halo-color': c.halo, 'text-halo-width':1.1 } },
+      { id:'place-minor', type:'symbol', source:'omt', 'source-layer':'place', minzoom:11,
+        filter:['match',['get','class'],['village','suburb','neighbourhood','hamlet'],true,false],
+        layout:{ 'text-field':['get','name'], 'text-font':['Noto Sans Regular'],
+          'text-size':11.5, 'text-letter-spacing':0.07, 'text-transform':'uppercase', 'text-max-width':8 },
+        paint:{ 'text-color': c.labelDim, 'text-halo-color': c.halo, 'text-halo-width':1.3 } },
+      { id:'place-major', type:'symbol', source:'omt', 'source-layer':'place',
+        filter:['match',['get','class'],['city','town','state','country'],true,false],
+        layout:{ 'text-field':['get','name'], 'text-font':['Noto Sans Bold'], 'text-max-width':9,
+          'text-size':['interpolate',['linear'],['zoom'],3,11,6,14,10,19,14,23] },
+        paint:{ 'text-color': c.label, 'text-halo-color': c.halo, 'text-halo-width':1.6 } }
+    ]
+  };
+}
+const STYLE = { get light(){ return mapStyle('light'); }, get dark(){ return mapStyle('dark'); } };
 const MOTIS = 'https://api.transitous.org';
 
 const store = {
@@ -15,7 +130,7 @@ const store = {
   set(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
 };
 
-let theme    = store.get('tern.theme', 'light');
+let theme    = store.get('tern.theme', 'dark');
 if(theme !== 'dark') theme = 'light';
 let units    = store.get('tern.units', 'imperial');
 let ttKey    = store.get('tern.ttkey', '');
@@ -278,7 +393,7 @@ function needStart(){
     '</div>';
   const b = $('startHere');
   if(b) b.onclick = () => { b.textContent = 'Locating…'; useGps(); };
-  if(navigator.geolocation) useGps();
+  if(navigator.geolocation) locateNow(true, false);   // automatic: must not override a typed start
 }
 
 /* ── recent destinations ──────────────────────────────────── */
@@ -872,7 +987,7 @@ function checkGpsPermission(){
   if(navigator.permissions && navigator.permissions.query){
     navigator.permissions.query({ name:'geolocation' }).then(st => {
       if(st.state !== 'granted') gpsBanner(st.state);   // granted only means allowed, not located
-      st.onchange = () => { if(st.state === 'granted') useGps(); else gpsBanner(st.state); };
+      st.onchange = () => { if(st.state === 'granted') locateNow(true, false); else gpsBanner(st.state); };
     }).catch(() => gpsBanner('prompt'));
   } else gpsBanner('prompt');
 }
@@ -1037,9 +1152,16 @@ function startNav(it){
   $('arrived').hidden = true; $('navBar').hidden = false;
   $('nav').hidden = false;
   $('panel').classList.add('hid');
+  // the route's own first point is always right; a guessed position may be miles away
+  const head = (nav.coords && nav.coords.length) ? nav.coords[0] : null;
   const first = nav.steps.find(s => s.lat != null);
-  const centre = me ? [me.lon, me.lat] : (first ? [first.lon, first.lat] : null);
-  map.easeTo(Object.assign({ pitch:60, zoom:17, duration:900 },
+  const centre = head ? head
+    : (first ? [first.lon, first.lat]
+    : (me ? [me.lon, me.lat] : null));
+  const brg = (nav.coords && nav.coords.length > 1)
+    ? bearing({ lat:nav.coords[0][1], lon:nav.coords[0][0] },
+              { lat:nav.coords[1][1], lon:nav.coords[1][0] }) : 0;
+  map.easeTo(Object.assign({ pitch:60, zoom:17, duration:900, bearing: brg },
     centre ? { center: centre } : {}));
   if(!following) toggleFollow();
   $('voiceBtn').classList.toggle('on', voiceOn);
@@ -1277,8 +1399,10 @@ function stamp(){
 
 /* ── system check ─────────────────────────────────────────── */
 const SERVICES = [
-  { id:'tiles', run: async () => { const j = await NET.json(OFM + '/styles/liberty', null, { tries:0, ms:9000, label:'Tiles' });
-      return 'OpenFreeMap reachable, ' + ((j.layers||[]).length) + ' style layers'; } },
+  { id:'tiles', run: async () => {
+      const j = await NET.json(OFM + '/planet', null, { tries:0, ms:9000, label:'Tiles' });
+      return 'OpenFreeMap vector tiles reachable, zoom ' + (j.minzoom != null ? j.minzoom : 0) +
+        ' to ' + (j.maxzoom != null ? j.maxzoom : 14); } },
   { id:'geo', run: async () => { const r = await geocode('charlotte'); return r.length + ' results from Photon'; } },
   { id:'drive', run: async () => {
       const j = await NET.json('https://router.project-osrm.org/route/v1/driving/-80.8431,35.2271;-80.8456,35.1924?overview=false',

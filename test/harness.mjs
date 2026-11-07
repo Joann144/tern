@@ -177,6 +177,7 @@ globalThis.fetch = async (url, opt) => {
   else if(u.includes('transitous') && u.includes('stoptimes')) body = MOCK.stoptimes;
   else if(u.includes('transitous')) body = failTransit ? { itineraries:[] } : MOCK.motis;
   else if(u.includes('tomtom')) body = MOCK.tomtom;
+  else if(u.includes('openfreemap') && u.endsWith('/planet')) body = { minzoom:0, maxzoom:14, tiles:['x'] };
   else if(u.includes('openfreemap')) body = MOCK.style;
   else if(u.includes('ipwho.is')) body = { latitude:35.2271, longitude:-80.8431, city:'Charlotte', region:'North Carolina' };
   else if(u.includes('ipapi.co')) body = { latitude:35.3, longitude:-80.9, city:'Backup City' };
@@ -402,6 +403,18 @@ console.log('   camera, no GPS -> ' + (camNoGps && camNoGps.center ? camNoGps.ce
 console.log('   camera, GPS fix -> ' + (camGps && camGps.center ? camGps.center.map(v=>v.toFixed(4)).join(', ') : 'NOT CENTRED'));
 chk(camNoGps && camNoGps.center, 'Start centres on the first turn when there is no fix');
 chk(camGps && camGps.center && Math.abs(camGps.center[1] - A.lat) < 1e-6, 'Start centres on you when there is a fix');
+
+// a wrong guessed position must not drag the camera away from the route
+T.endNav();
+T.me = { lat:35.2271, lon:-80.8431 };            // pretend the guess is downtown
+const far = JSON.parse(JSON.stringify(d));
+far.legs[0].coords = [[-81.5, 36.2], [-81.49, 36.21]];
+T.startNav(far);
+const camFar = T.map._ease;
+console.log('   route far from the guessed position -> camera at ' +
+  camFar.center.map(v=>v.toFixed(2)).join(', ') + ' (route starts -81.50, 36.20)');
+chk(Math.abs(camFar.center[0] + 81.5) < 0.01, 'Start follows the route, not a bad guess');
+T.endNav(); T.startNav(d);
 
 // the turn after this one
 T.paintNav();
