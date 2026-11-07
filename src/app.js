@@ -284,6 +284,17 @@ function addLayers(){
       paint:{ 'line-color': theme === 'dark' ? '#5b6675' : '#9aa4b2', 'line-width':5, 'line-opacity':.65 } },
       map.getLayer('route-case') ? 'route-case' : firstSymbol());
   }
+  if(!map.getSource('signals')){
+    map.addSource('signals', { type:'geojson', data: EMPTY });
+    map.addLayer({ id:'signal-halo', type:'circle', source:'signals', minzoom:12,
+      paint:{ 'circle-radius':['interpolate',['linear'],['zoom'],12,4,17,9],
+        'circle-color':['get','col'], 'circle-opacity':0.22 } });
+    map.addLayer({ id:'signal-dot', type:'circle', source:'signals', minzoom:12,
+      paint:{ 'circle-radius':['interpolate',['linear'],['zoom'],12,2,17,4.5],
+        'circle-color':['get','col'],
+        'circle-stroke-color': theme === 'dark' ? '#10141b' : '#ffffff',
+        'circle-stroke-width':1.4 } });
+  }
   if(!map.getSource('stops')){
     map.addSource('stops', { type:'geojson', data: EMPTY });
     map.addLayer({ id:'stops', type:'circle', source:'stops',
@@ -567,7 +578,7 @@ async function planAll(){
       etaCache[m] = res[0] ? res[0].duration : null;
       setTab(m, res[0] ? fmtShort(res[0].duration) : '—');
       if(m === mode){ options = res; current = res[0]; renderOptions(); paintRoute(current); fitRoute(current);
-        refreshDepartures(current); }
+        refreshDepartures(current); loadSignals(current); }
     }catch(e){
       if(token !== planToken) return;
       etaCache[m] = null;
@@ -760,7 +771,7 @@ function renderOptions(){
     el.addEventListener('click', ev => {
       if(ev.target.closest('.step') || ev.target.closest('.btn')) return;
       current = options[+el.dataset.i];
-      renderOptions(); paintRoute(current); fitRoute(current); refreshDepartures(current);
+      renderOptions(); paintRoute(current); fitRoute(current); refreshDepartures(current); loadSignals(current);
     });
   });
   const startBtn = $('startNav');
@@ -1119,7 +1130,9 @@ function voiceTick(){
   if(!nav || nav.done || !me) return;
   const s = nav.steps[nav.i];
   if(!s || s.lat == null) return;
-  const d = hav(me, { lat:s.lat, lon:s.lon });
+  const d = (s.along != null && nav.routeLen)
+    ? Math.max(0, s.along - nav.travelled)
+    : hav(me, { lat:s.lat, lon:s.lon });
   nav.said = nav.said || {};
   const done = nav.said[nav.i] = nav.said[nav.i] || [];
   // announce for the band the distance actually falls in, so sitting on top of
@@ -1144,6 +1157,24 @@ function bearing(a, b){
   return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
 }
 
+/* ── route geometry: snap a position onto the line ────────── */
+function snapToRoute(coords, cum, pt){
+  const k = Math.cos(pt.lat * Math.PI / 180);
+  let bd = Infinity, bs = 0, bi = 0;
+  for(let i = 1; i < coords.length; i++){
+    const ax = coords[i-1][0], ay = coords[i-1][1];
+    const dx = (coords[i][0] - ax) * k, dy = coords[i][1] - ay;
+    const px = (pt.lon - ax) * k,       py = pt.lat - ay;
+    const len2 = dx*dx + dy*dy;
+    let t = len2 ? (px*dx + py*dy) / len2 : 0;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    const cx = px - t*dx, cy = py - t*dy;
+    const d2 = cx*cx + cy*cy;
+    if(d2 < bd){ bd = d2; bs = cum[i-1] + t * (cum[i] - cum[i-1]); bi = i; }
+  }
+  return { metres: Math.sqrt(bd) * 111320, along: bs, index: bi };
+}
+
 /* ── turn by turn ─────────────────────────────────────────── */
 let nav = null;
 function startNav(it){
@@ -1152,6 +1183,14 @@ function startNav(it){
           dest: (trip.to && trip.to.name) || 'your destination', done:false,
           coords: (it.legs[0].coords || []).slice(), said:{} };
   $('arrived').hidden = true; $('navBar').hidden = false;
+  nav.cum = cumulative(nav.coords.length > 1 ? nav.coords : [[0,0],[0,0]]);
+  nav.routeLen = nav.cum[nav.cum.length - 1] || nav.dist || 0;
+  nav.steps.forEach(st => {
+    st.along = (st.lat != null && nav.coords.length > 1)
+      ? snapToRoute(nav.coords, nav.cum, { lat:st.lat, lon:st.lon }).along : null;
+  });
+  nav.travelled = 0;
+  nav.manual = null;
   $('nav').hidden = false;
   $('panel').classList.add('hid');
   // the route's own first point is always right; a guessed position may be miles away
@@ -1195,45 +1234,71 @@ function arrive(){
   $('navBar').hidden = true;
   $('navThen').hidden = true;
 }
+function navIndexFor(travelled){
+  for(let k = 0; k < nav.steps.length; k++){
+    const a = nav.steps[k].along;
+    if(a == null) continue;
+    if(a > travelled + 6) return k;      // the first maneuver still ahead of you
+  }
+  return nav.steps.length - 1;
+}
 function paintNav(){
   if(!nav) return;
+  if(me && nav.coords && nav.coords.length > 1){
+    const sn = snapToRoute(nav.coords, nav.cum, me);
+    if(sn.metres < 150){
+      nav.travelled = sn.along;
+      nav.offRoute = false;
+      if(nav.manual == null) nav.i = navIndexFor(nav.travelled);
+    } else nav.offRoute = true;
+  }
+  if(nav.manual != null) nav.i = nav.manual;
   const s = nav.steps[nav.i];
   $('navIcon').innerHTML = turnIcon(s.text);
   $('navInstr').textContent = s.text;
-  $('navMeta').textContent = 'Step ' + (nav.i+1) + ' of ' + nav.steps.length + (s.road ? ' · ' + s.road : '');
+  $('navMeta').textContent = (nav.offRoute ? 'Off the route · ' : '') +
+    'Step ' + (nav.i+1) + ' of ' + nav.steps.length + (s.road ? ' · ' + s.road : '');
   const nxt = nav.steps[nav.i + 1];
   if(nxt){
     $('navThen').hidden = false;
     $('navThenIcon').innerHTML = turnIcon(nxt.text);
     $('navThenText').textContent = 'Then ' + nxt.text.charAt(0).toLowerCase() + nxt.text.slice(1);
   } else $('navThen').hidden = true;
-  let d = (me && s.lat != null) ? hav(me, { lat:s.lat, lon:s.lon }) : s.dist;
+  // along the road, not as the crow flies
+  let d;
+  if(s.along != null && nav.routeLen) d = Math.max(0, s.along - nav.travelled);
+  else if(me && s.lat != null)        d = hav(me, { lat:s.lat, lon:s.lon });
+  else                                d = s.dist;
   $('navDist').textContent = d != null ? fmtDist(d) : '—';
-  let left = 0;
-  for(let k = nav.i; k < nav.steps.length; k++) left += nav.steps[k].dist || 0;
+  const left = nav.routeLen ? Math.max(0, nav.routeLen - nav.travelled) : 0;
   $('navLeft').textContent = fmtDist(left);
-  const secs = nav.dist ? nav.total * (left / nav.dist) : 0;
+  const secs = nav.routeLen ? nav.total * (left / nav.routeLen) : 0;
   $('navEta').textContent = clock(Date.now() + secs * 1000);
   $('navTimeLeft').textContent = fmtShort(secs);
   $('navTrip').textContent = fmtDur(nav.total) + ' · ' + fmtDist(nav.dist) + (nav.via ? ' · ' + nav.via : '');
   $('navSpeed').textContent = (speed != null && following) ? Math.round(speed) + (IMP() ? ' mph' : ' kph') : '—';
   $('navPrev').disabled = nav.i === 0;
   $('navNext').disabled = nav.i >= nav.steps.length - 1;
-  const pct = nav.dist ? Math.max(0, Math.min(100, (1 - left / nav.dist) * 100)) : 0;
+  const pct = nav.routeLen ? Math.max(0, Math.min(100, (nav.travelled / nav.routeLen) * 100)) : 0;
   $('navProgressFill').style.width = pct.toFixed(1) + '%';
   voiceTick();
-  const last = nav.steps[nav.steps.length - 1];
-  if(me && last && last.lat != null && hav(me, { lat:last.lat, lon:last.lon }) < 45) arrive();
+  if(me && nav.routeLen && nav.travelled > 0 && left < 35) arrive();
 }
 function navStep(d){
   if(!nav) return;
-  nav.i = Math.max(0, Math.min(nav.steps.length - 1, nav.i + d));
+  nav.manual = Math.max(0, Math.min(nav.steps.length - 1, nav.i + d));
+  nav.i = nav.manual;
   const s = nav.steps[nav.i];
   speak(spokenStep(s.text), false);
   if(s.lon != null) map.easeTo({ center:[s.lon, s.lat], zoom:17, pitch:60, duration:650 });
   paintNav();
 }
 function advance(){
+  if(!nav || !me) return;
+  nav.manual = null;             // a live position takes control back from the buttons
+  paintNav();
+}
+function advanceByProximity(){
   if(!nav || !me || !following) return;
   let near = -1, nd = Infinity;
   nav.steps.forEach((s, k) => {
@@ -1246,6 +1311,54 @@ function advance(){
     if(target > nav.i) nav.i = target;
   }
   paintNav();
+}
+
+/* ── traffic signals, stop signs and crossings on the route ── */
+const OVERPASS = 'https://overpass-api.de/api/interpreter';
+let signalCount = 0;
+async function loadSignals(it){
+  const src = map.getSource('signals');
+  if(!src) return;
+  const coords = (it && it.legs || []).reduce((a, l) => a.concat(l.coords || []), []);
+  if(coords.length < 2){ src.setData(EMPTY); signalCount = 0; return; }
+  let mnx=180, mny=90, mxx=-180, mxy=-90;
+  for(const p of coords){
+    mnx=Math.min(mnx,p[0]); mxx=Math.max(mxx,p[0]);
+    mny=Math.min(mny,p[1]); mxy=Math.max(mxy,p[1]);
+  }
+  const km2 = Math.abs((mxy-mny)*111.32) * Math.abs((mxx-mnx)*111.32*Math.cos((mxy+mny)/2*Math.PI/180));
+  if(km2 > 2500){ src.setData(EMPTY); signalCount = 0; return; }   // too wide to be worth it
+  const q = '[out:json][timeout:20];(' +
+    'node["highway"="traffic_signals"](' + mny + ',' + mnx + ',' + mxy + ',' + mxx + ');' +
+    'node["highway"="stop"](' + mny + ',' + mnx + ',' + mxy + ',' + mxx + ');' +
+    'node["highway"="crossing"]["crossing"="traffic_signals"](' + mny + ',' + mnx + ',' + mxy + ',' + mxx + ');' +
+    ');out body;';
+  try{
+    const j = await NET.json(OVERPASS, { method:'POST',
+      headers:{ 'Content-Type':'text/plain' }, body:q }, { tries:0, ms:22000, label:'Traffic signals' });
+    const cum = cumulative(coords);
+    const feats = [];
+    for(const el of (j.elements || [])){
+      if(el.lat == null) continue;
+      const sn = snapToRoute(coords, cum, { lat:el.lat, lon:el.lon });
+      if(sn.metres > 25) continue;                     // only what is actually on your route
+      const kind = (el.tags && el.tags.highway === 'stop') ? 'stop' : 'signal';
+      feats.push({ type:'Feature',
+        properties:{ kind, along: sn.along,
+          col: kind === 'stop' ? '#dc3545' : '#f0a92b' },
+        geometry:{ type:'Point', coordinates:[el.lon, el.lat] } });
+    }
+    feats.sort((a,b) => a.properties.along - b.properties.along);
+    signalCount = feats.filter(f => f.properties.kind === 'signal').length;
+    src.setData({ type:'FeatureCollection', features: feats });
+    const badge = $('signalBadge');
+    if(badge){
+      const stops = feats.length - signalCount;
+      badge.hidden = feats.length === 0;
+      badge.textContent = signalCount + ' light' + (signalCount === 1 ? '' : 's') +
+        (stops ? ' · ' + stops + ' stop sign' + (stops === 1 ? '' : 's') : '');
+    }
+  }catch(e){ src.setData(EMPTY); signalCount = 0; }
 }
 
 /* ── drive preview, for machines with no GPS ──────────────── */
@@ -1478,7 +1591,7 @@ document.querySelectorAll('.mode').forEach(el => el.addEventListener('click', as
   try{
     options = await planMode(mode);
     current = options[0];
-    renderOptions(); paintRoute(current); fitRoute(current); refreshDepartures(current);
+    renderOptions(); paintRoute(current); fitRoute(current); refreshDepartures(current); loadSignals(current);
   }catch(e){ options = []; current = null; paintRoute(null); renderError(mode, e); }
 }));
 document.querySelector('.mode[data-mode="' + mode + '"]').classList.add('on');

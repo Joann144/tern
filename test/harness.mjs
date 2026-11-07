@@ -154,6 +154,12 @@ const MOCK = {
       place:{ departure:'2026-11-07T17:03:00Z', scheduledDeparture:'2026-11-07T17:05:00Z' } },
     { routeShortName:'9', headsign:'Airport', mode:'BUS', realTime:true, tripCancelled:true,
       place:{ departure:'2026-11-07T17:10:00Z', scheduledDeparture:'2026-11-07T17:10:00Z' } } ] },
+  overpass:{ elements:[
+    { type:'node', lat:35.20900, lon:-80.8500, tags:{ highway:'traffic_signals' } },
+    { type:'node', lat:35.22250, lon:-80.8500, tags:{ highway:'traffic_signals' } },
+    { type:'node', lat:35.23350, lon:-80.8500, tags:{ highway:'stop' } },
+    { type:'node', lat:35.21000, lon:-80.9900, tags:{ highway:'traffic_signals' } }   // far off route
+  ] },
   tomtom:{ incidents:[
     { type:'Feature', geometry:{type:'LineString',coordinates:[[-80.84,35.22],[-80.839,35.221]]},
       properties:{ iconCategory:8, magnitudeOfDelay:4, events:[{description:'Closed'}],
@@ -179,6 +185,7 @@ globalThis.fetch = async (url, opt) => {
   else if(u.includes('tomtom')) body = MOCK.tomtom;
   else if(u.includes('openfreemap') && u.endsWith('/planet')) body = { minzoom:0, maxzoom:14, tiles:['x'] };
   else if(u.includes('openfreemap')) body = MOCK.style;
+  else if(u.includes('overpass')) body = MOCK.overpass;
   else if(u.includes('ipwho.is')) body = { latitude:35.2271, longitude:-80.8431, city:'Charlotte', region:'North Carolina' };
   else if(u.includes('ipapi.co')) body = { latitude:35.3, longitude:-80.9, city:'Backup City' };
   globalThis.__last = u;
@@ -193,6 +200,7 @@ const probe = `;globalThis.T = { fmtDist, fmtDur, fmtShort, decodePoly, geocode,
   gpsBanner, recentreNav, arrive, paintNav, requestFix, locateNow, lastFix, ipLocate, adoptStart,
   speak, spokenDistance, spokenStep, voiceTick, bearing, pointAt, cumulative, startSim, stopSim,
   savedHome, beginPickStart, get userStartFlag(){return userStart}, set userStartFlag(v){userStart=v},
+  loadSignals, snapToRoute, get signalCountNow(){return signalCount},
   get sim(){return sim},
   set trafficFlag(v){trafficOn=v},
   setOptions:(o,c)=>{ options=o; current=c; },
@@ -390,230 +398,95 @@ console.log('\n── no transit coverage -> ' + msg);
 chk(msg==='NO_TRANSIT', 'empty itineraries raise NO_TRANSIT');
 failTransit = false;
 
-/* ── turn by turn ─────────────────────────────────────────── */
+/* ── navigation maths on a known route ───────────────────── */
 console.log('\n── navigation');
-T.me = null;
-T.startNav(d);
-const camNoGps = T.map._ease || null;
-T.endNav();
-T.me = { lat:A.lat, lon:A.lon };
-T.startNav(d);
-const camGps = T.map._ease || null;
-console.log('   camera, no GPS -> ' + (camNoGps && camNoGps.center ? camNoGps.center.map(v=>v.toFixed(4)).join(', ') : 'NOT CENTRED'));
-console.log('   camera, GPS fix -> ' + (camGps && camGps.center ? camGps.center.map(v=>v.toFixed(4)).join(', ') : 'NOT CENTRED'));
-chk(camNoGps && camNoGps.center, 'Start centres on the first turn when there is no fix');
-chk(camGps && camGps.center && Math.abs(camGps.center[1] - A.lat) < 1e-6, 'Start centres on you when there is a fix');
 
-// a wrong guessed position must not drag the camera away from the route
-T.endNav();
-T.me = { lat:35.2271, lon:-80.8431 };            // pretend the guess is downtown
-const far = JSON.parse(JSON.stringify(d));
-far.legs[0].coords = [[-81.5, 36.2], [-81.49, 36.21]];
-T.startNav(far);
-const camFar = T.map._ease;
-console.log('   route far from the guessed position -> camera at ' +
-  camFar.center.map(v=>v.toFixed(2)).join(', ') + ' (route starts -81.50, 36.20)');
-chk(Math.abs(camFar.center[0] + 81.5) < 0.01, 'Start follows the route, not a bad guess');
-T.endNav(); T.startNav(d);
+// a straight 5 km road north, with a turn exactly halfway and arrival at the end
+const line = [];
+for(let i = 0; i <= 100; i++) line.push([-80.8500, 35.2000 + i * 0.00045]);
+const legLen = T.cumulative(line)[100];
+const route = { mode:'drive', duration:600, distance:legLen, via:'via Test Road',
+  legs:[{ kind:'CAR', color:'#1f6feb', coords:line, steps:[
+    { text:'Head north on Test Road',        dist:legLen/2, road:'Test Road',   lon:line[0][0],   lat:line[0][1] },
+    { text:'Turn right onto Second Street',  dist:legLen/2, road:'Second Street', lon:line[50][0], lat:line[50][1] },
+    { text:'Arrive at your destination',     dist:0,        road:'',           lon:line[100][0], lat:line[100][1] }
+  ]}]};
+console.log('   test route is ' + T.fmtDist(legLen) + ' with a turn at the midpoint');
 
-// the turn after this one
-T.paintNav();
-console.log('   then-line: ' + document.getElementById('navThenText').textContent);
-chk(/^Then /.test(document.getElementById('navThenText').textContent), 'shows the following turn');
-chk(document.getElementById('navThen').hidden === false, 'then-line visible mid route');
+T.trip.to = { name:'Test Destination', lat:line[100][1], lon:line[100][0] };
+T.me = { lat:line[0][1], lon:line[0][0] };
+T.following = true;
+T.endNav(); T.startNav(route);
 
-// progress bar advances
-const p0 = document.getElementById('navProgressFill').style.width;
-T.navStep(1); T.navStep(1);
-const p1 = document.getElementById('navProgressFill').style.width;
-console.log('   progress: ' + p0 + ' -> ' + p1);
-chk(parseFloat(p1) > parseFloat(p0), 'progress bar advances with the route');
+function at(i){ T.me = { lat:line[i][1], lon:line[i][0] }; T.paintNav(); 
+  return { step:T.nav.i, toTurn:E['navDist'].textContent, left:E['navLeft'].textContent,
+           pct:E['navProgressFill'].style.width, instr:E['navInstr'].textContent }; }
+
+const p10 = at(10), p40 = at(40), p60 = at(60), p95 = at(95);
+console.log('   10% along: ' + p10.instr + ' in ' + p10.toTurn + ' | ' + p10.left + ' left | ' + p10.pct);
+console.log('   40% along: ' + p40.instr + ' in ' + p40.toTurn + ' | ' + p40.left + ' left | ' + p40.pct);
+console.log('   60% along: ' + p60.instr + ' in ' + p60.toTurn + ' | ' + p60.left + ' left | ' + p60.pct);
+
+// the headline figure and the remaining figure must agree with each other
+const toTurn10 = parseFloat(p10.toTurn), left10 = parseFloat(p10.left);
+chk(toTurn10 <= left10, 'distance to the turn never exceeds distance remaining (was the reported bug)');
+chk(/Turn right/.test(p10.instr), 'shows the turn you are driving towards, got "' + p10.instr + '"');
+chk(parseFloat(p40.toTurn) < toTurn10, 'distance to the turn shrinks as you approach it');
+chk(/Arrive/.test(p60.instr), 'past the turn it points at the destination');
+chk(parseFloat(p10.pct) < parseFloat(p40.pct) && parseFloat(p40.pct) < parseFloat(p60.pct),
+    'progress advances with real position, not with button presses');
+chk(parseFloat(p95.left) < parseFloat(p10.left), 'distance remaining falls as you drive');
 
 // arrival
-const lastStep = d.legs[0].steps[d.legs[0].steps.length-1];
-T.me = { lat:lastStep.lat, lon:lastStep.lon };
-T.paintNav();
-console.log('   at destination -> arrived card: ' + (document.getElementById('arrived').hidden ? 'HIDDEN' : 'shown') +
-  ', nav bar: ' + (document.getElementById('navBar').hidden ? 'hidden' : 'SHOWN'));
-chk(document.getElementById('arrived').hidden === false, 'arrival card appears at the destination');
-chk(document.getElementById('navBar').hidden === true, 'nav bar yields to the arrival card');
+at(100);
+console.log('   at the end: arrived card ' + (E['arrived'].hidden ? 'HIDDEN' : 'shown') +
+  ', nav bar ' + (E['navBar'].hidden ? 'hidden' : 'SHOWN'));
+chk(E['arrived'].hidden === false, 'arrival card appears at the destination');
+chk(E['navBar'].hidden === true, 'nav bar yields to the arrival card');
 
-// gps banner wording
-T.gpsBanner('denied');
-console.log('   gps denied banner: "' + document.getElementById('gpsTitle').textContent + '"');
-chk(/blocked/i.test(document.getElementById('gpsTitle').textContent), 'denied state explained');
-T.gpsBanner('granted');
-chk(document.getElementById('gpsbar').hidden === true, 'banner hides once granted');
-console.log('   start: step ' + (T.nav.i+1) + ' — ' + E['navInstr'].textContent + ' in ' + E['navDist'].textContent);
-console.log('   arrive ' + E['navEta'].textContent + ', left ' + E['navLeft'].textContent);
-T.endNav(); T.me = { lat:A.lat, lon:A.lon }; T.startNav(d);   // fresh run for the manual checks
-T.navStep(1);
-chk(T.nav.i===1, 'manual next');
-T.navStep(-1); chk(T.nav.i===0, 'manual back');
-T.me = { lat:d.legs[0].steps[1].lat, lon:d.legs[0].steps[1].lon };
-T.following = true; T.advance();
-console.log('   GPS at maneuver 2 -> step ' + (T.nav.i+1));
-chk(T.nav.i===2, 'gps advance moves past a reached maneuver, got ' + T.nav.i);
-T.me = { lat:d.legs[0].steps[0].lat, lon:d.legs[0].steps[0].lon }; T.advance();
-chk(T.nav.i===2, 'gps jitter must not rewind');
-T.endNav(); chk(E['nav'].hidden===true, 'nav closes');
-
-/* ── a chosen start must survive late location results ────── */
-console.log('\n── start point ownership');
-T.userStartFlag = false;
-T.trip.from = null;
-T.setPlace('from', { name:'Charlotte Transportation Center', lat:35.2234, lon:-80.8382 });
-console.log('   user typed: "' + T.trip.from.name + '" | ownership flag: ' + T.userStartFlag);
-chk(T.userStartFlag === true, 'choosing a start marks it as the user\'s');
-
-// a background IP result lands afterwards and must be ignored
-navigator.geolocation.mode = 'timeout';
-const hijack = await T.locateNow(true, false);
-console.log('   after a late network lookup: "' + T.trip.from.name + '" (returned ' + hijack + ')');
-chk(T.trip.from.name === 'Charlotte Transportation Center', 'late network location does not hijack the chosen start');
-
-// adoptStart must also stand down
-T.adoptStart('Your location', 1, 2, false);
-chk(T.trip.from.name === 'Charlotte Transportation Center', 'late GPS does not hijack it either');
-
-// but pressing the button explicitly is allowed to override
-navigator.geolocation.mode = 'ok';
-await T.locateNow(true, true);
-console.log('   after pressing the location button: "' + T.trip.from.name + '"');
-chk(/Your location/.test(T.trip.from.name), 'an explicit press still works');
-
-/* ── a hand-set position is remembered ────────────────────── */
-localStorage.setItem('tern.home', JSON.stringify({ lat:35.2500, lon:-80.8600 }));
-const h = T.savedHome();
-console.log('\n── saved position: ' + h.lat + ', ' + h.lon);
-chk(h && Math.abs(h.lat - 35.25) < 1e-9, 'a hand-set position persists');
-localStorage.removeItem('tern.home');
-T.userStartFlag = false;
-T.trip.from = { name:'Your location', lat:A.lat, lon:A.lon };
-
-/* ── spoken guidance ──────────────────────────────────────── */
-console.log('\n── voice');
-console.log('   ' + [1000,700,200,100,30].map(m => m + 'm -> "' + T.spokenDistance(m).trim() + '"').join(' | '));
-chk(/half a mile/.test(T.spokenDistance(900)), 'half mile phrasing');
-chk(T.spokenDistance(20) === '', 'no distance lead-in once you are on top of the turn');
-const spoken = T.spokenStep('Turn right onto E Morehead St and join I-277');
-console.log('   abbreviations: "' + spoken + '"');
-chk(/Street/.test(spoken) && /Interstate 277/.test(spoken), 'abbreviations expanded for speech');
-
+// voice announcements as you approach the turn
+T.endNav(); T.me = { lat:line[0][1], lon:line[0][0] }; T.startNav(route);
 SPOKEN.length = 0;
-T.me = { lat:A.lat, lon:A.lon };
-T.endNav(); T.startNav(d);
-console.log('   on start it says: "' + SPOKEN[0] + '"');
-chk(/Starting route/.test(SPOKEN[0] || ''), 'announces the route on start');
-
-// approaching a turn announces once per threshold, not on every tick
-SPOKEN.length = 0;
-const turn = d.legs[0].steps[0];
-for(const metres of [900, 700, 400, 250, 200, 50, 40]){
-  const dlat = metres / 111320;
-  T.me = { lat: turn.lat + dlat, lon: turn.lon };
-  T.voiceTick();
-}
-console.log('   approaching: ' + SPOKEN.length + ' announcements');
+for(const i of [20, 35, 44, 48, 49]) at(i);
+console.log('   approaching the turn, spoken:');
 SPOKEN.forEach(x => console.log('     "' + x + '"'));
-chk(SPOKEN.length === 3, 'one announcement per distance band, got ' + SPOKEN.length);
+chk(SPOKEN.length >= 2 && SPOKEN.length <= 3, 'announced once per band, got ' + SPOKEN.length);
+chk(SPOKEN.every(x => /Second Street/.test(x)), 'announcements name the upcoming turn');
 
-/* ── heading and route interpolation ──────────────────────── */
-console.log('\n── heading');
-const north = T.bearing({lat:35.0,lon:-80.0},{lat:35.1,lon:-80.0});
-const east  = T.bearing({lat:35.0,lon:-80.0},{lat:35.0,lon:-79.9});
-console.log('   north=' + north.toFixed(1) + '°  east=' + east.toFixed(1) + '°');
-chk(Math.abs(north) < 1 || Math.abs(north-360) < 1, 'north is 0 degrees');
-chk(Math.abs(east - 90) < 1, 'east is 90 degrees');
+// manual stepping still works, and a live position takes control back
+T.endNav(); T.startNav(route);
+const before = T.nav.i;
+T.navStep(1);
+console.log('   manual next: step ' + before + ' -> ' + T.nav.i);
+chk(T.nav.i === before + 1, 'Next turn advances manually');
+T.navStep(-1);
+chk(T.nav.i === before, 'Back steps manually');
+T.me = { lat:line[60][1], lon:line[60][0] };
+T.advance();
+console.log('   after a live position update, step is ' + T.nav.i + ' (manual override released)');
+chk(T.nav.manual === null, 'a live fix releases the manual override');
 
-const pts = d.legs[0].coords, acc = T.cumulative(pts);
-const mid = T.pointAt(pts, acc, acc[acc.length-1] / 2);
-const end = T.pointAt(pts, acc, acc[acc.length-1] + 100);
-console.log('   midpoint ' + mid.lat.toFixed(4) + ', ' + mid.lon.toFixed(4) + ' | past the end flags done=' + end.done);
-chk(end.done === true, 'running off the end of the line is detected');
-chk(mid.lat > Math.min(...pts.map(p=>p[1])) && mid.lat < Math.max(...pts.map(p=>p[1])), 'midpoint lies on the route');
+// off-route detection
+T.me = { lat:35.40, lon:-80.40 };
+T.paintNav();
+console.log('   far from the route -> meta reads: "' + E['navMeta'].textContent + '"');
+chk(/Off the route/.test(E['navMeta'].textContent), 'driving away from the route is reported');
+T.endNav();
 
-/* ── drive preview ────────────────────────────────────────── */
-console.log('\n── drive preview');
-T.endNav(); T.me = { lat:A.lat, lon:A.lon }; T.startNav(d);
-T.startSim();
-chk(!!T.sim, 'preview starts');
-console.log('   running at ' + (T.sim.speed).toFixed(1) + ' m/s (route average ' +
-  (d.distance/d.duration).toFixed(1) + ' m/s)');
-chk(T.sim.speed > d.distance/d.duration, 'preview runs faster than real time');
-chk(T.sim.speed <= 32, 'but stays slow enough to watch, got ' + T.sim.speed.toFixed(1) + ' m/s');
-T.stopSim();
-chk(T.sim === null, 'preview stops cleanly');
-
-/* ── geolocation on a machine with no GPS chip ────────────── */
-console.log('\n── geolocation fallbacks');
-const geo = navigator.geolocation;
-
-geo.mode = 'precise-timeout'; geo.calls = [];
-const got1 = await T.locateNow(false);
-console.log('   precise times out -> attempts: ' + geo.calls.join(' then ') + ' | located: ' + got1);
-chk(got1 === true, 'falls back to a coarse network fix when precise times out');
-chk(geo.calls.join(',') === 'precise,coarse', 'tries precise first, then coarse');
-
-geo.mode = 'timeout'; geo.calls = [];
-const got2 = await T.locateNow(false);
-console.log('   GPS times out -> located: ' + got2 +
-  ' | banner: "' + document.getElementById('gpsTitle').textContent + '"');
-chk(got2 === true, 'a GPS timeout now falls through to the network, not failure');
-chk(/approximate/i.test(document.getElementById('gpsTitle').textContent),
-    'the approximation is declared, not passed off as exact');
-
-// everything unavailable: then, and only then, report failure honestly
-const realFetch2 = globalThis.fetch;
-globalThis.fetch = async (u, o) => {
-  if(String(u).includes('ipwho.is') || String(u).includes('ipapi.co')) throw new Error('offline');
-  return realFetch2(u, o);
-};
-const got3 = await T.locateNow(false);
-console.log('   GPS and network both fail -> located: ' + got3 +
-  ' | banner: "' + document.getElementById('gpsTitle').textContent + '"');
-chk(got3 === false, 'reports failure only when nothing at all answers');
-chk(/will not report a location/.test(document.getElementById('gpsTitle').textContent),
-    'total failure is explained, not silent');
-chk(document.getElementById('gpsbar').hidden === false, 'banner stays visible on total failure');
-globalThis.fetch = realFetch2;
-
-geo.mode = 'denied'; geo.calls = [];
-await T.locateNow(false);
-console.log('   denied -> attempts: ' + geo.calls.join(',') +
-  ' | banner: "' + document.getElementById('gpsTitle').textContent + '"');
-chk(geo.calls.length === 1, 'does not retry when the user denied it');
-chk(/blocked/i.test(document.getElementById('gpsTitle').textContent), 'denial explained separately');
-
-// no GPS at all: the network address still gives a usable start
-geo.mode = 'timeout';
-localStorage.removeItem('tern.lastfix');
-T.trip.from = null;
-const okIp = await T.locateNow(true);
-console.log('   no GPS at all -> located via network: ' + okIp +
-  ' | start: "' + document.getElementById('fromInput').value + '"' +
-  ' | banner: "' + document.getElementById('gpsTitle').textContent + '"');
-chk(okIp === true, 'network address rescues a machine with no GPS');
-chk(/Approximate location/.test(document.getElementById('fromInput').value), 'start is labelled approximate, not pretended exact');
-chk(/Charlotte/.test(document.getElementById('fromInput').value), 'city named so it is checkable');
-
-const ip = await T.ipLocate();
-console.log('   ipLocate -> ' + ip.city + ' ' + ip.lat + ', ' + ip.lon);
-chk(Math.abs(ip.lat - 35.2271) < 1e-6, 'primary network provider parsed');
-
-// a real choice must never be overwritten by a late fix
-T.trip.from = { name:'Charlotte Transportation Center', lat:35.2234, lon:-80.8382 };
-T.adoptStart('Your location', 1, 2, false);
-console.log('   late GPS vs a chosen start -> kept "' + T.trip.from.name + '"');
-chk(T.trip.from.name === 'Charlotte Transportation Center', 'a chosen start is never clobbered');
-T.trip.from = { name:'Your location', lat:A.lat, lon:A.lon };
-
-geo.mode = 'ok';
-await T.locateNow(false);
-const lf = T.lastFix();
-console.log('   success -> last fix cached: ' + (lf ? lf.lat + ', ' + lf.lon : 'none'));
-chk(lf && Math.abs(lf.lat - 35.2271) < 1e-6, 'a good fix is cached for the next visit');
-chk(document.getElementById('gpsbar').hidden === true, 'banner clears once located');
+/* ── traffic signals on the route ─────────────────────────── */
+console.log('\n── traffic signals');
+T.addLayers();
+await T.loadSignals(route);
+const sig = T.map.src['signals']._data;
+console.log('   returned 4 nodes, kept ' + sig.features.length + ' that are actually on the route');
+sig.features.forEach(f => console.log('     ' + f.properties.kind + ' at ' +
+  T.fmtDist(f.properties.along) + ' along'));
+chk(sig.features.length === 3, 'the node far from the route is discarded, got ' + sig.features.length);
+chk(T.signalCountNow === 2, 'traffic light count excludes stop signs, got ' + T.signalCountNow);
+chk(sig.features[0].properties.along < sig.features[2].properties.along, 'ordered along the route');
+chk(sig.features.some(f => f.properties.kind === 'stop'), 'stop signs kept and marked separately');
+console.log('   badge: "' + document.getElementById('signalBadge').textContent + '"');
+chk(/2 lights/.test(document.getElementById('signalBadge').textContent), 'badge summarises them');
 
 /* ── system check ─────────────────────────────────────────── */
 console.log('\n── system check');

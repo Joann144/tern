@@ -17,6 +17,7 @@ Built on OpenStreetMap data through open services, with optional live traffic fr
 | Real-time delays from GTFS-RT | Transitous (MOTIS) | no |
 | Live departure board at your boarding stop | Transitous (MOTIS) | no |
 | Alternative routes, labelled by road | OSRM and Valhalla | no |
+| Traffic lights and stop signs on your route | Overpass, OpenStreetMap | no |
 | Side-by-side time for all four modes | all of the above, in parallel | no |
 | GPS position and follow mode | browser Geolocation | no |
 | Approximate position when there is no GPS | ipwho.is, then ipapi.co | no |
@@ -25,6 +26,10 @@ Built on OpenStreetMap data through open services, with optional live traffic fr
 | Incidents and road closures | TomTom Incident Details v5 | yes |
 
 ## Driving
+
+Position is snapped onto the route itself, so every figure is measured along the road rather than as the crow flies: distance to the next turn, distance remaining, progress and the arrival estimate all derive from how far along the line you actually are. The step you see is the manoeuvre you are driving towards, not the one behind you. Leaving the route is detected and said plainly.
+
+Traffic lights and stop signs on your route are fetched from OpenStreetMap through Overpass, filtered to those within 25 m of the line, and drawn in order along it, with a count in the planner.
 
 Press Start and the map tips into a driving view, centred on you, rotated to your heading so the road ahead is always up. Directions are spoken aloud through the browser's own speech engine, with no service or key behind it: a warning at roughly half a mile, again at a few hundred feet, and the instruction itself as you reach the turn. Street abbreviations are expanded first so it says "Boulevard" and "Interstate 277" rather than reading out letters. Each band is announced once, and the voice can be muted from the navigation bar.
 
