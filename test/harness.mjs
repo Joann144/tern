@@ -178,7 +178,7 @@ chk(w.legs[0].kind==='WALK' && bk.legs[0].kind==='BIKE', 'walk/bike leg kinds');
 chk(w.legs[0].steps[1].lat != null, 'valhalla maneuver coordinates resolved from shape index');
 
 /* ── transit ──────────────────────────────────────────────── */
-const tr = await T.routeTransit(A,B);
+const tr = await T.routeTransit(Object.assign({name:'Uptown'},A), Object.assign({name:'Freedom Park'},B));
 console.log('\n── transit: ' + tr.length + ' itineraries');
 tr.forEach((it,i) => {
   const chain = it.legs.map(l => l.kind==='WALK' ? 'walk' : (l.vehicle+' '+l.line)).join(' › ');
@@ -190,6 +190,11 @@ chk(tr[1].legs[1].vehicle==='Light rail', 'LIGHT_RAIL maps to Light rail, got ' 
 chk(tr[0].transfers===0, 'single transit leg means 0 transfers, got ' + tr[0].transfers);
 chk(tr[0].legs[0].coords.length===2, 'walk leg geometry decoded');
 chk(tr[0].legs[1].color==='#1f6feb', 'route colour honoured, got ' + tr[0].legs[1].color);
+chk(tr[0].legs[2].toName==='Freedom Park' || tr[0].legs[2].toName==='your destination',
+    'MOTIS END placeholder replaced, got ' + tr[0].legs[2].toName);
+const arrOrder = tr.map(x => +new Date(x.arrive));
+chk(arrOrder.every((v,i)=>i===0||v>=arrOrder[i-1]), 'itineraries sorted by arrival time');
+console.log('   arrival order: ' + tr.map(x=>new Date(x.arrive).toISOString().slice(11,16)).join(' , '));
 
 /* ── all four modes in parallel ───────────────────────────── */
 console.log('\n── planning all modes');

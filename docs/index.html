@@ -746,6 +746,12 @@ function transitLabel(m){
   return k.replace(/_/g, ' ').toLowerCase().replace(/^./, c => c.toUpperCase());
 }
 
+function endName(n, place){
+  const k = String(n).trim().toUpperCase();
+  if(!n || k === 'START' || k === 'END' || k === 'ORIGIN' || k === 'DESTINATION')
+    return (place && place.name) || 'your destination';
+  return n;
+}
 async function routeTransit(a, b){
   const url = MOTIS + '/api/v5/plan?fromPlace=' + a.lat + ',' + a.lon +
     '&toPlace=' + b.lat + ',' + b.lon +
@@ -754,7 +760,7 @@ async function routeTransit(a, b){
   const j = await NET.json(url, null, { tries:1, ms:20000, label:'Transit router' });
   const its = j.itineraries || [];
   if(!its.length) throw new Error('NO_TRANSIT');
-  return its.map(it => {
+  const out = its.map(it => {
     const legs = (it.legs || []).map(l => {
       const g = l.legGeometry || {};
       const coords = g.points ? decodePoly(g.points, g.precision == null ? 6 : g.precision) : [];
@@ -766,7 +772,7 @@ async function routeTransit(a, b){
         line: l.routeShortName || l.displayName || '',
         vehicle: transitLabel(l.mode),
         headsign: l.headsign || (l.to && l.to.name) || '',
-        fromName: (l.from && l.from.name) || '', toName: (l.to && l.to.name) || '',
+        fromName: endName((l.from && l.from.name) || '', a), toName: endName((l.to && l.to.name) || '', b),
         startTime: l.startTime, endTime: l.endTime,
         duration: l.duration, distance: l.distance || 0, steps: []
       };
@@ -779,6 +785,8 @@ async function routeTransit(a, b){
       transfers: Math.max(0, legs.filter(l => l.kind === 'TRANSIT').length - 1),
       source:'Transitous', legs };
   });
+  out.sort((x, y) => new Date(x.arrive) - new Date(y.arrive));
+  return out;
 }
 async function planMode(m){
   const a = trip.from, b = trip.to;
@@ -938,10 +946,11 @@ function detailHtml(it){
       (s.dist ? fmtDist(s.dist) : '') + (s.road ? ' · ' + esc(s.road) : '') + '</div></div></div>').join('');
   }
   const canNav = it.mode !== 'transit' && it.legs[0] && it.legs[0].steps.length;
-  return '<div class="go">' +
-      (canNav ? '<button class="btn primary" id="startNav">Start</button>' : '') +
-      '<button class="btn" id="unitBtn">' + (IMP() ? 'mi' : 'km') + '</button></div>' +
-    '<div class="steps">' + rows + '</div>';
+  const go = canNav
+    ? '<div class="go"><button class="btn primary" id="startNav">Start</button>' +
+      '<button class="btn" id="unitBtn">' + (IMP() ? 'mi' : 'km') + '</button></div>'
+    : '';
+  return go + '<div class="steps">' + rows + '</div>';
 }
 function turnIcon(t){
   const a = (t || '').toLowerCase();
