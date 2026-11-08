@@ -999,7 +999,7 @@ const svg = (p, s) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor
 function renderOptions(){
   if(!options.length){ $('results').innerHTML = ''; return; }
   const html = options.map((it, i) => {
-    const sel = it === current ? ' on' : '';
+    const sel = (it === current ? ' on' : '') + (options.length === 1 ? ' solo' : '');
     let chain = '';
     if(it.mode === 'transit'){
       const parts = [];

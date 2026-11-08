@@ -77,6 +77,14 @@
       </button>
     </div>
 
+    <div id="whenbar">
+      <button id="whenBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg>
+        <span id="whenLabel">Leave now</span>
+      </button>
+      <input type="datetime-local" id="whenInput" hidden>
+      <button id="whenNow" type="button" hidden>Now</button>
+    </div>
     <div class="cap" id="modesHead">Ways to get there</div>
     <nav id="modes" role="tablist">
       <button class="mode" data-mode="drive" role="tab" title="Drive">
@@ -97,14 +105,6 @@
       </button>
     </nav>
 
-    <div id="whenbar">
-      <button id="whenBtn" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg>
-        <span id="whenLabel">Leave now</span>
-      </button>
-      <input type="datetime-local" id="whenInput" hidden>
-      <button id="whenNow" type="button" hidden>Now</button>
-    </div>
     <div id="signalBadge" hidden></div>
     <div id="suggest" hidden></div>
     <div id="live" hidden></div>
