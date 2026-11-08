@@ -886,7 +886,9 @@ function toast(msg, ms){
 const bootErrs = [];
 function fatal(h, p){
   $('fatalH').textContent = h; $('fatalP').textContent = p;
-  $('fatalPre').textContent = bootErrs.slice(0,6).join('\n');
+  const detail = bootErrs.slice(0, 6).join('\n');
+  $('fatalPre').textContent = detail;
+  $('fatalPre').hidden = !detail;          // an empty box explains nothing
   $('fatal').hidden = false;
 }
 window.addEventListener('error', e => { bootErrs.push(e.message); });
@@ -912,10 +914,26 @@ map.on('error', e => {
   const m = (e && e.error && (e.error.message || String(e.error))) || 'map error';
   if(!bootErrs.includes(m)) bootErrs.push(m);
 });
-setTimeout(() => {
-  if(!gotTile) fatal('No map tiles loaded',
+/* Ask the map what it is actually holding rather than trusting that one
+   event arrived. A backgrounded tab throttles timers and events, so a
+   single deadline will accuse a perfectly good map of being broken. */
+function tilesHeld(){
+  try{
+    const sc = map.style && map.style.sourceCaches && map.style.sourceCaches.omt;
+    return sc ? Object.keys(sc._tiles || {}).length : 0;
+  }catch(e){ return 0; }
+}
+let tileTries = 0;
+function tileWatch(){
+  if(gotTile) return;
+  if(tilesHeld() > 0){ gotTile = true; return; }
+  // never cry failure over a tab that was never on screen to draw
+  if(document.hidden || ++tileTries < 3){ setTimeout(tileWatch, 7000); return; }
+  fatal('No map tiles loaded',
     'The page is running but could not reach the tile server. Check your connection, then use System check for detail.');
-}, 14000);
+}
+setTimeout(tileWatch, 14000);
+document.addEventListener('visibilitychange', () => { if(!document.hidden && !gotTile) tileTries = 0; });
 
 const firstSymbol = () => {
   const ls = (map.getStyle() && map.getStyle().layers) || [];

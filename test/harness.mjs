@@ -237,6 +237,7 @@ const probe = `;globalThis.T = { fmtDist, fmtDur, fmtShort, decodePoly, geocode,
   get departAt(){return departAt}, set departAt(v){departAt=v}, whenLabel, setDepart,
   transitProbe, nextWeekdayMorning, renderError, set mode(v){mode=v},
   sheetStops, snapSheet, nearestStop, layoutSheet, sheetPad, applySheet,
+  tilesHeld, tileWatch, fatal, get gotTile(){return gotTile}, set gotTile(v){gotTile=v},
   get sheetIdx(){return sheetIdx}, set sheetIdx(v){sheetIdx=v},
   get sheetPx(){return sheetPx}, sheetDown, sheetMove, sheetUp, isPhone,
   gpsBanner, recentreNav, arrive, paintNav, requestFix, locateNow, lastFix, ipLocate, adoptStart,
@@ -707,6 +708,24 @@ T.layoutSheet();
 console.log('   desktop transform: "' + panelEl.style.transform + '"');
 chk(panelEl.style.transform === '', 'on a desktop the sheet transform is taken off entirely');
 chk(T.sheetPad().bottom === 70, 'on a desktop the padding is the plain one');
+
+console.log('\n── not accusing a working map of being broken');
+const fatalEl = document.getElementById('fatal');
+fatalEl.hidden = true;
+T.gotTile = false;
+document.hidden = true;
+T.tileWatch();
+chk(fatalEl.hidden, 'a tab that was never on screen is given more time, not an error');
+document.hidden = false;
+T.gotTile = false;
+T.tileWatch(); T.tileWatch();
+chk(fatalEl.hidden, 'nor is one slow check enough to declare failure');
+console.log('   tiles the map is actually holding: ' + T.tilesHeld());
+
+T.fatal('Something broke', 'with no detail to show');
+console.log('   detail box hidden with no detail: ' + document.getElementById('fatalPre').hidden);
+chk(document.getElementById('fatalPre').hidden === true, 'an empty detail box is hidden rather than shown blank');
+fatalEl.hidden = true;
 
 console.log('\nhosts: ' + [...new Set(seen)].join('\n       '));
 console.log(ok ? '\nALL CHECKS PASSED' : '\nSOME CHECKS FAILED');
