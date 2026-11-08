@@ -229,7 +229,9 @@ const probe = `;globalThis.T = { fmtDist, fmtDur, fmtShort, decodePoly, geocode,
   setPlace, trip, SERVICES, hav, addLayers, paintAlts, viaLabel, departures, refreshDepartures, emptyState,
   needStart, recents, rememberRecent, adoptKey, get ttKeyNow(){return ttKey},
   loadIncidents, showIncident, clearIncidents, get incNow(){return incData},
-  routeTomTom, routeOSRM, jamData, clock, secsLeft,
+  routeTomTom, routeOSRM, jamData, clock, secsLeft, isoLocal,
+  get departAt(){return departAt}, set departAt(v){departAt=v}, whenLabel, setDepart,
+  transitProbe, nextWeekdayMorning, renderError, set mode(v){mode=v},
   gpsBanner, recentreNav, arrive, paintNav, requestFix, locateNow, lastFix, ipLocate, adoptStart,
   speak, spokenDistance, spokenStep, voiceTick, bearing, pointAt, cumulative, startSim, stopSim,
   savedHome, beginPickStart, get userStartFlag(){return userStart}, set userStartFlag(v){userStart=v},
@@ -590,6 +592,56 @@ ttRouteFail = false;
 console.log('   source ' + fb[0].source + ' · ' + fb[0].duration + 's');
 chk(fb[0].source === 'OSRM', 'an empty TomTom answer still yields a route');
 chk(fb[0].arrive > Date.now(), 'the fallback still reports an arrival time');
+
+console.log('\n── planning for a later departure');
+const future = new Date('2026-11-09T17:30:00-05:00').getTime();
+T.departAt = future;
+await T.routeDrive({lat:35.2271,lon:-80.8431}, {lat:35.1924,lon:-80.8456});
+console.log('   drive url tail: ' + globalThis.__last.split('&').filter(x=>x.startsWith('departAt')).join(''));
+chk(globalThis.__last.includes('departAt=' + encodeURIComponent(T.isoLocal(future))),
+  'the router is asked for that time, with the local offset, so it models rush hour');
+chk(/[+-]\d\d:\d\d$/.test(T.isoLocal(future)), 'the timestamp carries a real UTC offset');
+chk(!/departAt=.*Z/.test(globalThis.__last), 'not sent as a UTC timestamp, which TomTom reads differently');
+
+const wlk = await T.routeValhalla({lat:35.2271,lon:-80.8431}, {lat:35.1924,lon:-80.8456}, 'pedestrian');
+console.log('   walk arrives ' + T.clock(wlk[0].arrive));
+chk(Math.abs(wlk[0].arrive - (future + wlk[0].duration*1000)) < 1000,
+  'walking arrival counts from the planned departure, not from now');
+
+try{ await T.routeTransit({lat:35.2271,lon:-80.8431}, {lat:35.1924,lon:-80.8456}); }catch(e){}
+chk(globalThis.__last.includes(encodeURIComponent(new Date(future).toISOString())),
+  'transit is asked for the same departure');
+console.log('   label: "' + T.whenLabel() + '"');
+chk(/^Leave /.test(T.whenLabel()) && !/now/.test(T.whenLabel()), 'the control says which time it is planning for');
+T.departAt = null;
+chk(T.whenLabel() === 'Leave now', 'clearing it goes back to now');
+const nowDrive = await T.routeDrive({lat:35.2271,lon:-80.8431}, {lat:35.1924,lon:-80.8456});
+chk(!/departAt/.test(globalThis.__last), 'and stops pinning the request to a time');
+chk(nowDrive[0].source === 'TomTom', 'still live-traffic routing');
+
+console.log('\n── telling "nothing runs now" apart from "no transit here"');
+const wk = new Date(T.nextWeekdayMorning());
+console.log('   probes ' + wk.toDateString() + ' ' + wk.getHours() + ':00');
+chk(wk.getDay() >= 1 && wk.getDay() <= 5, 'the probe lands on a weekday');
+chk(wk.getHours() === 8, 'at a morning hour when services run');
+chk(wk.getTime() > Date.now(), 'and in the future');
+
+failTransit = true;
+const noneNow = await T.transitProbe({lat:35.2271,lon:-80.8431},{lat:35.1924,lon:-80.8456});
+failTransit = false;
+chk(noneNow === null, 'a genuinely empty area probes empty');
+const found = await T.transitProbe({lat:35.2271,lon:-80.8431},{lat:35.1924,lon:-80.8456});
+console.log('   weekday probe: ' + (found ? Math.round(found.duration/60) + ' min trip' : 'nothing'));
+chk(found && found.duration > 0, 'where there is service, the probe finds it');
+
+T.mode = 'transit';
+T.renderError('transit', new Error('NO_TRANSIT'));
+await new Promise(r => setTimeout(r, 30));
+const txt = document.getElementById('results').innerHTML;
+console.log('   message: ' + txt.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,110));
+chk(/Nothing is running at this hour/.test(txt), 'it says the hour is the problem, not the city');
+chk(/useWhen/.test(txt), 'and offers to plan the trip for when it does run');
+T.mode = 'drive';
 
 console.log('\nhosts: ' + [...new Set(seen)].join('\n       '));
 console.log(ok ? '\nALL CHECKS PASSED' : '\nSOME CHECKS FAILED');

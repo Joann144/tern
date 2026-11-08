@@ -134,6 +134,17 @@ let theme    = store.get('tern.theme', 'dark');
 if(theme !== 'dark') theme = 'light';
 let units    = store.get('tern.units', 'imperial');
 let ttKey    = store.get('tern.ttkey', '');
+/* null means "leave now"; otherwise a timestamp to plan the trip for. */
+let departAt = null;
+const departBase = () => departAt || Date.now();
+/* TomTom wants a local time with its offset, not a Z timestamp. */
+function isoLocal(ms){
+  const d = new Date(ms), p = n => String(n).padStart(2, '0');
+  const o = -d.getTimezoneOffset(), sg = o >= 0 ? '+' : '-', ao = Math.abs(o);
+  return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate()) +
+    'T' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':00' +
+    sg + p(Math.floor(ao/60)) + ':' + p(ao%60);
+}
 let mode     = store.get('tern.mode', 'drive');
 let trafficOn= store.get('tern.traffic', '1') === '1';
 document.documentElement.setAttribute('data-theme', theme);
@@ -465,7 +476,7 @@ async function routeOSRM(a, b){
     }));
     return { mode:'drive', duration:r.duration, distance:r.distance, source:'OSRM',
       freeDuration:r.duration, delay:0, traffic:false,
-      arrive: Date.now() + r.duration * 1000,
+      arrive: departBase() + r.duration * 1000,
       via: viaLabel(steps),
       legs:[{ kind:'CAR', color:COLOR.CAR, coords:r.geometry.coordinates, steps }] };
   }).sort((x,y) => x.duration - y.duration);
@@ -479,7 +490,8 @@ async function routeTomTom(a, b){
     '?key=' + encodeURIComponent(ttKey) +
     '&traffic=true&computeTravelTimeFor=all&maxAlternatives=2' +
     '&instructionsType=text&routeRepresentation=polyline&sectionType=traffic' +
-    '&travelMode=car&routeType=fastest';
+    '&travelMode=car&routeType=fastest' +
+    (departAt ? '&departAt=' + encodeURIComponent(isoLocal(departAt)) : '');
   const j = await NET.json(url, null, { tries:1, ms:18000, label:'Driving router' });
   qBump();
   const routes = j.routes || [];
@@ -506,8 +518,8 @@ async function routeTomTom(a, b){
     return { mode:'drive', duration:live, distance: sum.lengthInMeters || 0, source:'TomTom',
       freeDuration: free, delay: Math.max(0, sum.trafficDelayInSeconds || (live - free)),
       traffic:true,
-      arrive: sum.arrivalTime ? new Date(sum.arrivalTime).getTime() : Date.now() + live * 1000,
-      depart: sum.departureTime ? new Date(sum.departureTime).getTime() : Date.now(),
+      arrive: sum.arrivalTime ? new Date(sum.arrivalTime).getTime() : departBase() + live * 1000,
+      depart: sum.departureTime ? new Date(sum.departureTime).getTime() : departBase(),
       jams, via: viaLabel(steps),
       legs:[{ kind:'CAR', color:COLOR.CAR, coords, steps }] };
   }).sort((x,y) => x.duration - y.duration);
@@ -546,6 +558,7 @@ async function routeValhalla(a, b, costing){
   });
   return { mode: costing === 'bicycle' ? 'bike' : 'walk', duration:t.summary.time,
     distance:t.summary.length * unit, source:'Valhalla', via: viaLabel(steps),
+    arrive: departBase() + t.summary.time * 1000,
     legs:[{ kind: costing === 'bicycle' ? 'BIKE' : 'WALK',
       color: costing === 'bicycle' ? COLOR.BIKE : COLOR.WALK, coords, steps }] };
   });
@@ -575,7 +588,7 @@ function endName(n, place){
 async function routeTransit(a, b){
   const url = MOTIS + '/api/v5/plan?fromPlace=' + a.lat + ',' + a.lon +
     '&toPlace=' + b.lat + ',' + b.lon +
-    '&time=' + encodeURIComponent(new Date().toISOString()) +
+    '&time=' + encodeURIComponent(new Date(departBase()).toISOString()) +
     '&numItineraries=4&pedestrianProfile=FOOT';
   const j = await NET.json(url, null, { tries:1, ms:20000, label:'Transit router' });
   const its = j.itineraries || [];
@@ -687,11 +700,54 @@ function wireRecents(){
     sugSlot = 'to'; setPlace('to', list[+el.dataset.r]);
   }));
 }
+
+/* "No transit" has two very different causes: the agency publishes no feed,
+   or there is simply nothing running at this hour. Guessing wrong is how you
+   tell somebody their city has no buses. So ask again for a weekday morning
+   and let the answer decide what to say. */
+function nextWeekdayMorning(from){
+  const d = new Date(from || Date.now());
+  d.setSeconds(0, 0);
+  do { d.setDate(d.getDate() + 1); } while(d.getDay() === 0 || d.getDay() === 6);
+  d.setHours(8, 0, 0, 0);
+  return d.getTime();
+}
+async function transitProbe(a, b){
+  const when = nextWeekdayMorning();
+  const url = MOTIS + '/api/v5/plan?fromPlace=' + a.lat + ',' + a.lon +
+    '&toPlace=' + b.lat + ',' + b.lon +
+    '&time=' + encodeURIComponent(new Date(when).toISOString()) +
+    '&numItineraries=1&pedestrianProfile=FOOT';
+  try{
+    const j = await NET.json(url, null, { tries:1, ms:15000, label:'Transit probe' });
+    const it = (j.itineraries || [])[0];
+    if(!it) return null;
+    return { when, duration: it.duration };
+  }catch(e){ return null; }
+}
 function renderError(m, e){
-  const why = e.message === 'NO_TRANSIT'
-    ? 'No public transport connection was found for this trip. Transitous only has data where a transit agency publishes an open GTFS feed, and coverage is thin in much of the United States.'
-    : esc(e.message);
-  $('results').innerHTML = '<div class="note"><b>No ' + m + ' route.</b><br>' + why + '</div>';
+  if(e.message === 'NO_TRANSIT'){
+    $('results').innerHTML = '<div class="note"><b>No transit route right now.</b><br>Checking whether anything runs at another time…</div>';
+    const a = trip.from, b = trip.to, token = planToken;
+    transitProbe(a, b).then(hit => {
+      if(token !== planToken || mode !== 'transit') return;
+      if(hit){
+        const d = new Date(hit.when);
+        const day = d.toLocaleDateString(undefined, { weekday:'long' });
+        $('results').innerHTML = '<div class="note"><b>Nothing is running at this hour.</b><br>' +
+          'There is a ' + fmtShort(hit.duration) + ' trip if you leave ' + day + ' at ' + clock(hit.when) +
+          '.</div><div class="go"><button class="btn primary" id="useWhen">Plan it for then</button></div>';
+        const btn = $('useWhen');
+        if(btn) btn.onclick = () => setDepart(hit.when);
+      } else {
+        $('results').innerHTML = '<div class="note"><b>No transit here.</b><br>' +
+          'No agency covering this trip publishes an open timetable, so there is nothing to route on. ' +
+          'Coverage is thin across much of the United States.</div>';
+      }
+    });
+    return;
+  }
+  $('results').innerHTML = '<div class="note"><b>No ' + m + ' route.</b><br>' + esc(e.message) + '</div>';
 }
 
 /* ── live departures at the boarding stop ─────────────────── */
@@ -1831,6 +1887,57 @@ function adoptKey(raw){
   $('trafficBtn').classList.add('on');
   removeTraffic(); addTraffic(); loadIncidents(true);
 }
+
+/* ── when to leave ────────────────────────────────────────── */
+function whenLabel(){
+  if(!departAt) return 'Leave now';
+  const d = new Date(departAt), n = new Date();
+  const sameDay = d.toDateString() === n.toDateString();
+  const tomorrow = new Date(n.getTime() + 864e5).toDateString() === d.toDateString();
+  const day = sameDay ? '' : (tomorrow ? 'tomorrow ' : d.toLocaleDateString(undefined, { weekday:'short' }) + ' ');
+  return 'Leave ' + day + clock(departAt);
+}
+function paintWhen(){
+  $('whenLabel').textContent = whenLabel();
+  $('whenBtn').classList.toggle('set', !!departAt);
+  $('whenNow').hidden = !departAt;
+}
+function localValue(ms){
+  const d = new Date(ms), p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate()) +
+    'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+function setDepart(ms){
+  departAt = ms;
+  paintWhen();
+  if(trip.from && trip.to) planAll();
+}
+$('whenBtn').addEventListener('click', () => {
+  const inp = $('whenInput');
+  if(inp.hidden){
+    // round up to the next five minutes so the default is a sane one
+    const base = departAt || (Math.ceil((Date.now() + 6e5) / 3e5) * 3e5);
+    inp.value = localValue(base);
+    inp.hidden = false; $('whenBtn').hidden = true; $('whenNow').hidden = false;
+    inp.focus();
+    if(inp.showPicker) try{ inp.showPicker(); }catch(e){}
+  }
+});
+$('whenInput').addEventListener('change', () => {
+  const v = $('whenInput').value;
+  const ms = v ? new Date(v).getTime() : NaN;
+  $('whenInput').hidden = true; $('whenBtn').hidden = false;
+  if(isFinite(ms)) setDepart(ms); else paintWhen();
+});
+$('whenInput').addEventListener('blur', () => {
+  setTimeout(() => { if(!$('whenInput').hidden){ $('whenInput').hidden = true; $('whenBtn').hidden = false; paintWhen(); } }, 120);
+});
+$('whenNow').addEventListener('click', () => {
+  $('whenInput').hidden = true; $('whenBtn').hidden = false;
+  setDepart(null);
+});
+paintWhen();
+
 $('ttKey').addEventListener('input', () => adoptKey($('ttKey').value));
 $('ttKey').addEventListener('blur',  () => adoptKey($('ttKey').value));
 $('ttKey').addEventListener('paste', () => setTimeout(() => adoptKey($('ttKey').value), 0));

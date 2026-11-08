@@ -111,6 +111,20 @@ svg{width:18px;height:18px;flex:none}
 .mode.on em{color:var(--accent)}
 .mode.busy em::after{content:"··";letter-spacing:2px}
 
+#whenbar{display:flex;align-items:center;gap:8px;margin-top:14px}
+#whenBtn{display:flex;align-items:center;gap:8px;height:32px;padding:0 13px;border:1px solid var(--line);
+  border-radius:var(--r-sm);background:none;color:var(--ink2);cursor:pointer;
+  font-family:var(--display);font-size:12.5px;font-weight:600;transition:.15s var(--ease)}
+#whenBtn:hover{border-color:var(--ink3);color:var(--ink)}
+#whenBtn.set{border-color:var(--accent);color:var(--accent)}
+#whenBtn svg{width:14px;height:14px}
+#whenInput{height:32px;padding:0 10px;border:1px solid var(--accent);border-radius:var(--r-sm);
+  background:var(--sink);color:var(--ink);outline:0;font-family:var(--display);font-size:12.5px;
+  color-scheme:dark;min-width:0;flex:1}
+html[data-theme="light"] #whenInput{color-scheme:light}
+#whenNow{height:32px;padding:0 12px;border:1px solid var(--line2);border-radius:var(--r-sm);
+  background:none;color:var(--ink2);cursor:pointer;font-family:var(--display);font-size:12.5px;font-weight:600}
+#whenNow:hover{border-color:var(--ink3);color:var(--ink)}
 #signalBadge{margin-top:14px;font-size:11.5px;font-weight:500;color:var(--ink2);
   display:flex;align-items:center;gap:8px}
 #signalBadge::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--amber);flex:none}
