@@ -876,6 +876,13 @@ function addLayers(){
       paint:{ 'line-color':['get','color'], 'line-dasharray':[0.1,1.9],
         'line-width':['interpolate',['linear'],['zoom'],8,4,16,8] } }, firstSymbol());
   }
+  if(!map.getSource('jams')){
+    map.addSource('jams', { type:'geojson', data: EMPTY });
+    map.addLayer({ id:'jams', type:'line', source:'jams',
+      layout:{ 'line-cap':'round','line-join':'round' },
+      paint:{ 'line-color':['get','col'],
+        'line-width':['interpolate',['linear'],['zoom'],8,4,16,9] } }, firstSymbol());
+  }
   if(!map.getSource('alts')){
     map.addSource('alts', { type:'geojson', data: EMPTY });
     map.addLayer({ id:'alts', type:'line', source:'alts',
@@ -1041,7 +1048,7 @@ function viaLabel(steps){
   const best = Object.keys(tally).sort((x,y) => tally[y] - tally[x])[0];
   return best ? 'via ' + best : '';
 }
-async function routeDrive(a, b){
+async function routeOSRM(a, b){
   const url = 'https://router.project-osrm.org/route/v1/driving/' +
     a.lon + ',' + a.lat + ';' + b.lon + ',' + b.lat +
     '?overview=full&geometries=geojson&steps=true&alternatives=3';
@@ -1056,9 +1063,65 @@ async function routeDrive(a, b){
         lon: m.location ? m.location[0] : null, lat: m.location ? m.location[1] : null });
     }));
     return { mode:'drive', duration:r.duration, distance:r.distance, source:'OSRM',
+      freeDuration:r.duration, delay:0, traffic:false,
+      arrive: Date.now() + r.duration * 1000,
       via: viaLabel(steps),
       legs:[{ kind:'CAR', color:COLOR.CAR, coords:r.geometry.coordinates, steps }] };
   }).sort((x,y) => x.duration - y.duration);
+}
+
+/* TomTom knows what the roads are actually doing right now; OSRM only knows
+   the speed limits. When a key is present the live numbers win. */
+async function routeTomTom(a, b){
+  const url = 'https://api.tomtom.com/routing/1/calculateRoute/' +
+    a.lat + ',' + a.lon + ':' + b.lat + ',' + b.lon + '/json' +
+    '?key=' + encodeURIComponent(ttKey) +
+    '&traffic=true&computeTravelTimeFor=all&maxAlternatives=2' +
+    '&instructionsType=text&routeRepresentation=polyline&sectionType=traffic' +
+    '&travelMode=car&routeType=fastest';
+  const j = await NET.json(url, null, { tries:1, ms:18000, label:'Driving router' });
+  qBump();
+  const routes = j.routes || [];
+  if(!routes.length) throw new Error('No driving route exists between those points');
+  return routes.map(r => {
+    const sum = r.summary || {};
+    const coords = [];
+    (r.legs || []).forEach(l => (l.points || []).forEach(p => coords.push([p.longitude, p.latitude])));
+    const ins = (r.guidance && r.guidance.instructions) || [];
+    const steps = ins.map((m, k) => {
+      const next = ins[k + 1];
+      const off = m.routeOffsetInMeters || 0;
+      return { text: m.message || m.maneuver || '', road: m.street || '',
+        dist: next ? Math.max(0, (next.routeOffsetInMeters || 0) - off) : Math.max(0, (sum.lengthInMeters || 0) - off),
+        offset: off, t: m.travelTimeInSeconds || 0,
+        lon: m.point ? m.point.longitude : null, lat: m.point ? m.point.latitude : null };
+    }).filter(st => st.text);
+    const jams = (r.sections || []).filter(x => x.sectionType === 'TRAFFIC').map(x => ({
+      from: x.startPointIndex, to: x.endPointIndex,
+      delay: x.delayInSeconds || 0, mag: x.magnitudeOfDelay || 0,
+      kind: x.simpleCategory || 'OTHER' }));
+    const live = sum.travelTimeInSeconds || 0;
+    const free = sum.noTrafficTravelTimeInSeconds || live;
+    return { mode:'drive', duration:live, distance: sum.lengthInMeters || 0, source:'TomTom',
+      freeDuration: free, delay: Math.max(0, sum.trafficDelayInSeconds || (live - free)),
+      traffic:true,
+      arrive: sum.arrivalTime ? new Date(sum.arrivalTime).getTime() : Date.now() + live * 1000,
+      depart: sum.departureTime ? new Date(sum.departureTime).getTime() : Date.now(),
+      jams, via: viaLabel(steps),
+      legs:[{ kind:'CAR', color:COLOR.CAR, coords, steps }] };
+  }).sort((x,y) => x.duration - y.duration);
+}
+
+async function routeDrive(a, b){
+  /* Live times are better, but never at the cost of getting no route at all:
+     anything that goes wrong at TomTom quietly falls back to OSRM. */
+  if(ttKey && quotaUsed() < QUOTA){
+    try{
+      const r = await routeTomTom(a, b);
+      if(r.length) return r;
+    }catch(e){}
+  }
+  return routeOSRM(a, b);
 }
 async function routeValhalla(a, b, costing){
   const body = { locations:[{lat:a.lat,lon:a.lon},{lat:b.lat,lon:b.lon}], costing, alternates:2,
@@ -1288,11 +1351,33 @@ function paintAlts(){
   });
   asrc.setData({ type:'FeatureCollection', features: feats });
 }
+
+/* TomTom hands back the stretches that are actually slow, as index ranges
+   into the route's points. Drawn over the route, they read like the
+   red-and-amber bands people already expect on a map. */
+const JAM_COL = ['#f0a92b','#f0a92b','#ef7d1a','#e23b2e','#b5231a'];
+function jamData(it){
+  const leg = it.legs && it.legs[0];
+  if(!it.jams || !it.jams.length || !leg || !leg.coords) return EMPTY;
+  const c = leg.coords;
+  const feats = it.jams.map(j => {
+    const a = Math.max(0, Math.min(c.length - 1, j.from));
+    const b = Math.max(a + 1, Math.min(c.length, j.to + 1));
+    const seg = c.slice(a, b);
+    if(seg.length < 2) return null;
+    return { type:'Feature',
+      properties:{ col: JAM_COL[Math.max(0, Math.min(4, j.mag))] || JAM_COL[2] },
+      geometry:{ type:'LineString', coordinates: seg } };
+  }).filter(Boolean);
+  return { type:'FeatureCollection', features: feats };
+}
 function paintRoute(it){
   const src = map.getSource('route'), ssrc = map.getSource('stops');
   if(!src) return;
   paintAlts();
-  if(!it){ src.setData(EMPTY); if(ssrc) ssrc.setData(EMPTY); return; }
+  const jsrc = map.getSource('jams');
+  if(!it){ src.setData(EMPTY); if(ssrc) ssrc.setData(EMPTY); if(jsrc) jsrc.setData(EMPTY); return; }
+  if(jsrc) jsrc.setData(jamData(it));
   const feats = it.legs.filter(l => l.coords && l.coords.length > 1).map(l => ({
     type:'Feature', properties:{ color:l.color, walk: l.kind === 'WALK' },
     geometry:{ type:'LineString', coordinates:l.coords }
@@ -1348,14 +1433,18 @@ function renderOptions(){
       });
       chain = '<div class="chain">' + parts.join('<span class="sepx">›</span>') + '</div>';
     }
-    const when = it.depart ? clock(it.depart) + ' → ' + clock(it.arrive) : '';
+    const when = it.mode === 'transit'
+      ? (it.depart ? clock(it.depart) + ' → ' + clock(it.arrive) : '')
+      : (it.arrive ? clock(it.arrive) : '');
     const liveTag = it.live
       ? '<span class="livetag"><span class="dotlive"></span>' +
         (it.maxDelay ? (it.maxDelay > 0 ? it.maxDelay + ' min late' : Math.abs(it.maxDelay) + ' min early') : 'On time') +
         '</span>' : '';
     const sum = it.mode === 'transit'
       ? (it.transfers === 0 ? 'Direct' : it.transfers + ' transfer' + (it.transfers > 1 ? 's' : ''))
-      : (it.via || '') + (i === 0 && options.length > 1 ? ' · fastest' : '');
+      : [it.via || '', (i === 0 && options.length > 1 ? 'fastest' : ''),
+         (it.delay >= 60 ? fmtShort(it.delay) + ' of traffic' : (it.traffic ? 'traffic is clear' : ''))]
+        .filter(Boolean).join(' · ');
     return '<div class="opt' + sel + '" data-i="' + i + '">' +
       '<div class="top"><span class="dur">' + fmtDur(it.duration) + '</span>' +
       '<span class="dist">' + (it.mode === 'transit'
@@ -1785,11 +1874,18 @@ function startNav(it){
   nav.cum = cumulative(nav.coords.length > 1 ? nav.coords : [[0,0],[0,0]]);
   nav.routeLen = nav.cum[nav.cum.length - 1] || nav.dist || 0;
   nav.steps.forEach(st => {
-    st.along = (st.lat != null && nav.coords.length > 1)
-      ? snapToRoute(nav.coords, nav.cum, { lat:st.lat, lon:st.lon }).along : null;
+    st.along = st.offset != null ? st.offset
+      : ((st.lat != null && nav.coords.length > 1)
+        ? snapToRoute(nav.coords, nav.cum, { lat:st.lat, lon:st.lon }).along : null);
   });
+  nav.profile = nav.steps
+    .filter(st => st.along != null && st.t != null)
+    .map(st => ({ d: st.along, t: st.t }))
+    .sort((x, y) => x.d - y.d);
+  if(nav.profile.length < 2) nav.profile = null;
   nav.travelled = 0;
   nav.manual = null;
+  nav.lastCheck = Date.now();
   $('nav').hidden = false;
   $('panel').classList.add('hid');
   // the route's own first point is always right; a guessed position may be miles away
@@ -1808,8 +1904,52 @@ function startNav(it){
   speak('Starting route to ' + nav.dest + '. ' + spokenStep(nav.steps[0].text));
   paintNav();
 }
+
+/* Traffic that forms after you set off is the main reason a quoted time
+   goes wrong. While driving, re-ask the router from where you actually are
+   and take the new numbers, so the ETA keeps up with the road. */
+const RECHECK_MS = 120000;
+let reBusy = false;
+async function recheckTraffic(){
+  if(!nav || nav.done || reBusy) return;
+  if(!ttKey || quotaUsed() >= QUOTA) return;
+  if(!me || !trip.to || nav.offRoute) return;
+  if(Date.now() - (nav.lastCheck || 0) < RECHECK_MS) return;
+  nav.lastCheck = Date.now();
+  reBusy = true;
+  try{
+    const fresh = await routeTomTom({ lat:me.lat, lon:me.lon }, trip.to);
+    if(!nav || nav.done || !fresh.length) return;
+    const best = fresh[0];
+    const was = secsLeft();
+    nav.total     = best.duration;
+    nav.dist      = best.distance;
+    nav.routeLen  = 0;            // rebuilt below from the fresh geometry
+    nav.coords    = (best.legs[0].coords || []).slice();
+    nav.cum       = cumulative(nav.coords.length > 1 ? nav.coords : [[0,0],[0,0]]);
+    nav.routeLen  = nav.cum[nav.cum.length - 1] || best.distance || 0;
+    nav.steps     = best.legs[0].steps;
+    nav.steps.forEach(st => { st.along = st.offset != null ? st.offset : null; });
+    nav.profile   = nav.steps.filter(st => st.along != null && st.t != null)
+                      .map(st => ({ d:st.along, t:st.t })).sort((x,y) => x.d - y.d);
+    if(nav.profile.length < 2) nav.profile = null;
+    nav.travelled = 0;
+    nav.manual    = null;
+    nav.i         = 0;
+    nav.said      = {};
+    current = best;
+    paintRoute(best);
+    const now = secsLeft();
+    const diff = Math.round((now - was) / 60);
+    if(diff >= 3)       toast('Traffic ahead: ' + diff + ' min slower than planned', 5000);
+    else if(diff <= -3) toast('Traffic cleared: ' + Math.abs(diff) + ' min faster', 4000);
+    paintNav();
+  }catch(e){}
+  finally{ reBusy = false; }
+}
 function endNav(){
   stopSim();
+  reBusy = false;
   if(canSpeak()){ try{ speechSynthesis.cancel(); }catch(e){} }
   nav = null;
   $('nav').hidden = true; $('arrived').hidden = true; $('recentre').hidden = true;
@@ -1841,6 +1981,27 @@ function navIndexFor(travelled){
   }
   return nav.steps.length - 1;
 }
+
+/* The old estimate scaled the total by distance left, which assumes you
+   travel the whole trip at one speed. The router already says how long it
+   expects you to take to reach each turn, so interpolate between those. */
+function secsLeft(){
+  if(!nav || !nav.routeLen) return 0;
+  const left = Math.max(0, nav.routeLen - nav.travelled);
+  const prof = nav.profile;
+  if(!prof || prof.length < 2) return nav.total * (left / nav.routeLen);
+  const d = nav.travelled;
+  if(d <= prof[0].d) return Math.max(0, nav.total - prof[0].t);
+  for(let k = 1; k < prof.length; k++){
+    if(d <= prof[k].d){
+      const span = prof[k].d - prof[k-1].d;
+      const f = span > 0 ? (d - prof[k-1].d) / span : 0;
+      const spent = prof[k-1].t + f * (prof[k].t - prof[k-1].t);
+      return Math.max(0, nav.total - spent);
+    }
+  }
+  return 0;
+}
 function paintNav(){
   if(!nav) return;
   if(me && nav.coords && nav.coords.length > 1){
@@ -1871,7 +2032,7 @@ function paintNav(){
   $('navDist').textContent = d != null ? fmtDist(d) : '—';
   const left = nav.routeLen ? Math.max(0, nav.routeLen - nav.travelled) : 0;
   $('navLeft').textContent = fmtDist(left);
-  const secs = nav.routeLen ? nav.total * (left / nav.routeLen) : 0;
+  const secs = secsLeft();
   $('navEta').textContent = clock(Date.now() + secs * 1000);
   $('navTimeLeft').textContent = fmtShort(secs);
   $('navTrip').textContent = fmtDur(nav.total) + ' · ' + fmtDist(nav.dist) + (nav.via ? ' · ' + nav.via : '');
@@ -1881,6 +2042,7 @@ function paintNav(){
   const pct = nav.routeLen ? Math.max(0, Math.min(100, (nav.travelled / nav.routeLen) * 100)) : 0;
   $('navProgressFill').style.width = pct.toFixed(1) + '%';
   voiceTick();
+  recheckTraffic();
   if(me && nav.routeLen && nav.travelled > 0 && left < 35) arrive();
 }
 function navStep(d){

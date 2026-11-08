@@ -117,6 +117,36 @@ const MOCK = {
       { distance:1770, name:'E Morehead St', maneuver:{ type:'turn', modifier:'right', location:[-80.8420,35.2260] } },
       { distance:3100, name:'East Blvd', maneuver:{ type:'turn', modifier:'left', location:[-80.8470,35.2050] } },
       { distance:0, name:'', maneuver:{ type:'arrive', location:[-80.8456,35.1924] } } ] }] }] },
+  ttroute:{ routes:[
+    { summary:{ lengthInMeters:9100, travelTimeInSeconds:1200, noTrafficTravelTimeInSeconds:1010,
+        trafficDelayInSeconds:190, departureTime:'2026-11-07T16:42:00-05:00',
+        arrivalTime:'2026-11-07T17:02:00-05:00' },
+      legs:[{ points: SEG1.concat(SEG2).map(([x,y]) => ({ latitude:y, longitude:x })) }],
+      sections:[{ sectionType:'TRAFFIC', startPointIndex:1, endPointIndex:2,
+        delayInSeconds:190, magnitudeOfDelay:3, simpleCategory:'JAM' }],
+      guidance:{ instructions:[
+        { routeOffsetInMeters:0, travelTimeInSeconds:0, point:{latitude:35.2271,longitude:-80.8431},
+          street:'S Tryon St', maneuver:'DEPART', message:'Leave from S Tryon St' },
+        { routeOffsetInMeters:900, travelTimeInSeconds:220, point:{latitude:35.2260,longitude:-80.8420},
+          street:'I-277', maneuver:'TURN_RIGHT', message:'Turn right onto I-277' },
+        { routeOffsetInMeters:9100, travelTimeInSeconds:1200, point:{latitude:35.1924,longitude:-80.8456},
+          maneuver:'ARRIVE', message:'You have arrived' } ] } },
+    { summary:{ lengthInMeters:11200, travelTimeInSeconds:1500, noTrafficTravelTimeInSeconds:1480,
+        trafficDelayInSeconds:20, arrivalTime:'2026-11-07T17:07:00-05:00' },
+      legs:[{ points: SEG2.map(([x,y]) => ({ latitude:y, longitude:x })) }],
+      guidance:{ instructions:[
+        { routeOffsetInMeters:0, point:{latitude:35.2260,longitude:-80.8420}, street:'Park Rd',
+          maneuver:'DEPART', message:'Leave from Park Rd' },
+        { routeOffsetInMeters:11200, point:{latitude:35.1924,longitude:-80.8456},
+          maneuver:'ARRIVE', message:'You have arrived' } ] } },
+    { summary:{ lengthInMeters:12800, travelTimeInSeconds:1620, noTrafficTravelTimeInSeconds:1600,
+        trafficDelayInSeconds:20, arrivalTime:'2026-11-07T17:09:00-05:00' },
+      legs:[{ points: SEG1.concat(SEG2).map(([x,y]) => ({ latitude:y, longitude:x })) }],
+      guidance:{ instructions:[
+        { routeOffsetInMeters:0, point:{latitude:35.2271,longitude:-80.8431}, street:'Independence Blvd',
+          maneuver:'DEPART', message:'Leave from Independence Blvd' },
+        { routeOffsetInMeters:12800, point:{latitude:35.1924,longitude:-80.8456},
+          maneuver:'ARRIVE', message:'You have arrived' } ] } }] },
   valhalla:{ trip:{ summary:{ length:2.6, time:1980 }, legs:[{ shape: enc(SEG1.concat(SEG2),6),
     maneuvers:[
       { instruction:'Walk south on South Tryon Street.', length:0.4, street_names:['South Tryon Street'], begin_shape_index:0 },
@@ -173,6 +203,7 @@ const MOCK = {
 };
 const seen = [];
 let failTransit = false;
+let ttRouteFail = false;
 globalThis.fetch = async (url, opt) => {
   const u = String(url); seen.push(u.split('?')[0]);
   let body = {};
@@ -182,6 +213,7 @@ globalThis.fetch = async (url, opt) => {
   else if(u.includes('valhalla')) body = MOCK.valhalla;
   else if(u.includes('transitous') && u.includes('stoptimes')) body = MOCK.stoptimes;
   else if(u.includes('transitous')) body = failTransit ? { itineraries:[] } : MOCK.motis;
+  else if(u.includes('tomtom') && u.includes('calculateRoute')) body = ttRouteFail ? { routes:[] } : MOCK.ttroute;
   else if(u.includes('tomtom')) body = MOCK.tomtom;
   else if(u.includes('openfreemap') && u.endsWith('/planet')) body = { minzoom:0, maxzoom:14, tiles:['x'] };
   else if(u.includes('openfreemap')) body = MOCK.style;
@@ -197,6 +229,7 @@ const probe = `;globalThis.T = { fmtDist, fmtDur, fmtShort, decodePoly, geocode,
   setPlace, trip, SERVICES, hav, addLayers, paintAlts, viaLabel, departures, refreshDepartures, emptyState,
   needStart, recents, rememberRecent, adoptKey, get ttKeyNow(){return ttKey},
   loadIncidents, showIncident, clearIncidents, get incNow(){return incData},
+  routeTomTom, routeOSRM, jamData, clock, secsLeft,
   gpsBanner, recentreNav, arrive, paintNav, requestFix, locateNow, lastFix, ipLocate, adoptStart,
   speak, spokenDistance, spokenStep, voiceTick, bearing, pointAt, cumulative, startSim, stopSim,
   savedHome, beginPickStart, get userStartFlag(){return userStart}, set userStartFlag(v){userStart=v},
@@ -500,6 +533,63 @@ for(const s of T.SERVICES){ const r = rows[s.id];
   console.log('   ' + s.id.padEnd(9) + (r.querySelector('i').className||'soft').padEnd(6) + r.querySelector('span').textContent); }
 console.log('   failing: ' + bad);
 chk(bad===0, 'no hard failures with all mocks healthy');
+
+/* ── traffic-aware driving times ──────────────────────────── */
+console.log('\n── driving times reflect live traffic');
+T.ttKey = 'TESTKEY';
+const dr = await T.routeDrive({lat:35.2271,lon:-80.8431}, {lat:35.1924,lon:-80.8456});
+console.log('   source ' + dr[0].source + ' · live ' + dr[0].duration + 's · free-flow ' +
+  dr[0].freeDuration + 's · delay ' + dr[0].delay + 's');
+chk(dr[0].source === 'TomTom', 'driving uses the live-traffic router when a key is present');
+chk(dr[0].duration === 1200 && dr[0].freeDuration === 1010,
+  'the quoted time is the traffic time, not the speed-limit time');
+chk(dr[0].delay === 190, 'the delay traffic is costing is carried through');
+chk(dr.length === 3, 'alternatives come back too');
+chk(dr[0].duration <= dr[1].duration && dr[1].duration <= dr[2].duration, 'sorted fastest first');
+console.log('   arrive ' + T.clock(dr[0].arrive));
+chk(Math.abs(dr[0].arrive - new Date('2026-11-07T17:02:00-05:00').getTime()) < 1000,
+  'arrival clock comes from the router, not from adding seconds to now');
+
+console.log('\n── maneuver offsets are exact, not snapped');
+const offs = dr[0].legs[0].steps.map(s => s.offset);
+console.log('   offsets ' + JSON.stringify(offs));
+chk(offs[0] === 0 && offs[1] === 900 && offs[2] === 9100, 'each turn knows its true distance along the route');
+chk(dr[0].legs[0].steps[1].dist === 8200, 'step length is the gap to the next turn');
+T.startNav(dr[0]);
+const alongs = T.nav.steps.map(s => s.along);
+console.log('   along   ' + JSON.stringify(alongs));
+chk(JSON.stringify(alongs) === JSON.stringify(offs), 'navigation uses those offsets verbatim');
+T.endNav();
+
+console.log('\n── congestion bands');
+const jd = T.jamData(dr[0]);
+console.log('   bands: ' + jd.features.length + ' colour ' + (jd.features[0]||{properties:{}}).properties.col);
+chk(jd.features.length === 1, 'the slow stretch is drawn');
+chk(jd.features[0].geometry.coordinates.length === 2, 'it covers just that stretch, not the whole route');
+chk(T.jamData(dr[1]).features.length === 0, 'a clear route draws no bands');
+
+console.log('\n── time left follows the route\'s own pace, not a flat average');
+T.startNav(dr[0]);
+T.nav.travelled = 900;
+const atTurn = Math.round(T.secsLeft());
+T.nav.travelled = 5000;
+const midWay = Math.round(T.secsLeft());
+const flat   = Math.round(1200 * (9100 - 5000) / 9100);
+console.log('   at the turn ' + atTurn + 's · halfway ' + midWay + 's (flat average would say ' + flat + 's)');
+chk(atTurn === 980, 'at a turn, time left is the total minus the time spent reaching it');
+chk(midWay === 490, 'between turns it interpolates along the router\'s own pace');
+chk(midWay !== flat, 'city crawl and freeway are no longer averaged into one speed');
+T.nav.travelled = 9100;
+chk(Math.round(T.secsLeft()) === 0, 'arriving reads zero');
+T.endNav();
+
+console.log('\n── falling back when TomTom cannot answer');
+ttRouteFail = true;
+const fb = await T.routeDrive({lat:35.2271,lon:-80.8431}, {lat:35.1924,lon:-80.8456});
+ttRouteFail = false;
+console.log('   source ' + fb[0].source + ' · ' + fb[0].duration + 's');
+chk(fb[0].source === 'OSRM', 'an empty TomTom answer still yields a route');
+chk(fb[0].arrive > Date.now(), 'the fallback still reports an arrival time');
 
 console.log('\nhosts: ' + [...new Set(seen)].join('\n       '));
 console.log(ok ? '\nALL CHECKS PASSED' : '\nSOME CHECKS FAILED');
