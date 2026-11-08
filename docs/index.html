@@ -2009,6 +2009,7 @@ function startNav(it){
   nav.manual = null;
   nav.lastCheck = Date.now();
   $('nav').hidden = false;
+  if(isPhone()) $('panel').style.transform = '';
   $('panel').classList.add('hid');
   // the route's own first point is always right; a guessed position may be miles away
   const head = (nav.coords && nav.coords.length) ? nav.coords[0] : null;
@@ -2076,6 +2077,7 @@ function endNav(){
   nav = null;
   $('nav').hidden = true; $('arrived').hidden = true; $('recentre').hidden = true;
   $('panel').classList.remove('hid');
+  layoutSheet();
   map.easeTo({ pitch:0, duration:700 });
 }
 function recentreNav(){
@@ -2495,7 +2497,14 @@ function sheetStops(){
 }
 function applySheet(px){
   sheetPx = px;
-  $('panel').style.setProperty('--sheet', px + 'px');
+  const p = $('panel');
+  p.style.setProperty('--sheet', px + 'px');
+  /* Drive the transform straight from JS. A custom property inside a
+     calc() in a transform is one indirection too many for some engines
+     to re-evaluate reliably, and a sheet that ignores you is the bug
+     this whole thing is fixing. */
+  const full = sheetStops()[2];
+  p.style.transform = 'translateY(' + Math.round(full - px) + 'px)';
 }
 function snapSheet(i, quiet){
   const stops = sheetStops();
@@ -2510,9 +2519,15 @@ function nearestStop(px){
   return best;
 }
 function layoutSheet(){
-  const stops = sheetStops();
-  $('panel').style.setProperty('--sheet-full', stops[2] + 'px');
-  if(isPhone()) applySheet(stops[Math.max(0, Math.min(2, sheetIdx))]);
+  const p = $('panel'), stops = sheetStops();
+  if(!isPhone()){                       // desktop drives the panel from CSS alone
+    p.style.transform = '';
+    p.style.removeProperty('--sheet');
+    p.style.removeProperty('--sheet-full');
+    return;
+  }
+  p.style.setProperty('--sheet-full', stops[2] + 'px');
+  applySheet(stops[Math.max(0, Math.min(2, sheetIdx))]);
 }
 function sheetDown(e){
   if(!isPhone() || e.button) return;

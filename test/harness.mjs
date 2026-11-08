@@ -664,8 +664,13 @@ chk(stops[0] < stops[1] && stops[1] < stops[2], 'they ascend');
 T.snapSheet(0, true);
 chk(T.sheetPx === stops[0], 'collapsing really collapses it');
 const panelEl = document.getElementById('panel');
-console.log('   --sheet = ' + panelEl.style.getPropertyValue('--sheet'));
-chk(panelEl.style.getPropertyValue('--sheet') === stops[0] + 'px', 'and the style follows');
+console.log('   collapsed transform: ' + panelEl.style.transform);
+chk(panelEl.style.transform === 'translateY(' + (stops[2] - stops[0]) + 'px)',
+  'the transform is written directly, so the sheet cannot ignore the new height');
+T.snapSheet(2, true);
+console.log('   opened transform:    ' + panelEl.style.transform);
+chk(panelEl.style.transform === 'translateY(0px)', 'and fully open sits flush');
+T.snapSheet(0, true);
 T.snapSheet(2, true);
 chk(T.sheetPx === stops[2], 'and it opens again');
 chk(T.nearestStop(stops[1] + 10) === 1, 'a slow drag lands on the nearest stop');
@@ -698,6 +703,9 @@ chk(high > low, 'a taller sheet pushes the route further up the map');
 chk(high <= Math.round(innerHeight * 0.52), 'but never so far that the route has nowhere to go');
 globalThis.__phone = false;
 globalThis.innerHeight = 800;
+T.layoutSheet();
+console.log('   desktop transform: "' + panelEl.style.transform + '"');
+chk(panelEl.style.transform === '', 'on a desktop the sheet transform is taken off entirely');
 chk(T.sheetPad().bottom === 70, 'on a desktop the padding is the plain one');
 
 console.log('\nhosts: ' + [...new Set(seen)].join('\n       '));
