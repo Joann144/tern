@@ -270,16 +270,19 @@ function tilesHeld(){
     return sc ? Object.keys(sc._tiles || {}).length : 0;
   }catch(e){ return 0; }
 }
-let tileTries = 0;
+let tileTries = 0, tileWarned = false;
 function tileWatch(){
-  if(gotTile) return;
+  if(gotTile || tileWarned) return;
   if(tilesHeld() > 0){ gotTile = true; return; }
   // never cry failure over a tab that was never on screen to draw
-  if(document.hidden || ++tileTries < 3){ setTimeout(tileWatch, 7000); return; }
-  fatal('No map tiles loaded',
-    'The page is running but could not reach the tile server. Check your connection, then use System check for detail.');
+  if(document.hidden || ++tileTries < 4){ setTimeout(tileWatch, 8000); return; }
+  /* A modal that blocks the whole app had better be certain, and this
+     check cannot be: a throttled or occluded tab reports neither tiles
+     nor hidden. Say it quietly and let people keep using the app. */
+  tileWarned = true;
+  toast('The map is slow to load. Open System check if it stays blank.', 6000);
 }
-setTimeout(tileWatch, 14000);
+setTimeout(tileWatch, 16000);
 document.addEventListener('visibilitychange', () => { if(!document.hidden && !gotTile) tileTries = 0; });
 
 const firstSymbol = () => {

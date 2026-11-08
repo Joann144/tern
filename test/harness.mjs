@@ -237,7 +237,7 @@ const probe = `;globalThis.T = { fmtDist, fmtDur, fmtShort, decodePoly, geocode,
   get departAt(){return departAt}, set departAt(v){departAt=v}, whenLabel, setDepart,
   transitProbe, nextWeekdayMorning, renderError, set mode(v){mode=v},
   sheetStops, snapSheet, nearestStop, layoutSheet, sheetPad, applySheet,
-  tilesHeld, tileWatch, fatal, get gotTile(){return gotTile}, set gotTile(v){gotTile=v},
+  tilesHeld, tileWatch, fatal, toast, get gotTile(){return gotTile}, set gotTile(v){gotTile=v},
   get sheetIdx(){return sheetIdx}, set sheetIdx(v){sheetIdx=v},
   get sheetPx(){return sheetPx}, sheetDown, sheetMove, sheetUp, isPhone,
   gpsBanner, recentreNav, arrive, paintNav, requestFix, locateNow, lastFix, ipLocate, adoptStart,
@@ -756,8 +756,10 @@ T.tileWatch();
 chk(fatalEl.hidden, 'a tab that was never on screen is given more time, not an error');
 document.hidden = false;
 T.gotTile = false;
-T.tileWatch(); T.tileWatch();
-chk(fatalEl.hidden, 'nor is one slow check enough to declare failure');
+T.tileWatch(); T.tileWatch(); T.tileWatch(); T.tileWatch(); T.tileWatch();
+chk(fatalEl.hidden, 'a slow map never blocks the whole app behind a modal');
+console.log('   after repeated misses, toast says: "' + E['toast'].textContent + '"');
+chk(/slow to load/.test(E['toast'].textContent), 'it mentions it quietly instead');
 console.log('   tiles the map is actually holding: ' + T.tilesHeld());
 
 T.fatal('Something broke', 'with no detail to show');
