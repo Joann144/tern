@@ -668,8 +668,9 @@ async function planAll(){
   if(hav(trip.from, trip.to) < 40){
     options = []; current = null;
     paintRoute(null);
-    document.querySelectorAll('.mode').forEach(el => {
-      el.classList.remove('busy'); el.querySelector('em').textContent = '—'; });
+    Object.keys(etaCache).forEach(k => delete etaCache[k]);
+    clearModeBars();
+    ['drive','transit','bike','walk'].forEach(m => setTab(m, '—'));
     $('results').innerHTML = '<div class="note"><b>You are already there.</b><br>' +
       'The start and the destination are the same place. Pick somewhere else to go.</div>';
     return;
@@ -678,6 +679,7 @@ async function planAll(){
   options = []; current = null;
   paintRoute(null);
   $('results').innerHTML = '<div class="note">Finding routes…</div>';
+  clearModeBars();
   document.querySelectorAll('.mode').forEach(el => { el.classList.add('busy'); el.querySelector('em').textContent = ''; });
 
   const jobs = ['drive','transit','bike','walk'].map(async m => {
@@ -702,7 +704,89 @@ function setTab(m, txt){
   const el = document.querySelector('.mode[data-mode="' + m + '"]');
   if(!el) return;
   el.classList.remove('busy');
+  el.classList.toggle('none', txt === 'none' || txt === '—');
   el.querySelector('em').textContent = txt;
+  paintModeBars();
+}
+/* The point of this app is that you see every way of getting there at
+   once. Scale each bar against the slowest option so the trade-off is a
+   shape you take in at a glance, not four numbers to compare in your head. */
+function paintModeBars(){
+  const have = ['drive','transit','bike','walk']
+    .map(m => etaCache[m]).filter(v => typeof v === 'number' && isFinite(v) && v > 0);
+  const slowest = have.length ? Math.max.apply(null, have) : 0;
+  ['drive','transit','bike','walk'].forEach(m => {
+    const el = document.querySelector('.mode[data-mode="' + m + '"]');
+    if(!el) return;
+    const bar = el.querySelector('.etabar b');
+    if(!bar) return;
+    const v = etaCache[m];
+    const pct = (slowest && typeof v === 'number' && isFinite(v) && v > 0)
+      ? Math.max(5, Math.round((v / slowest) * 100)) : 0;
+    bar.style.width = pct + '%';
+  });
+}
+function clearModeBars(){
+  document.querySelectorAll('.mode').forEach(el => {
+    el.classList.remove('none');
+    const b = el.querySelector('.etabar b');
+    if(b) b.style.width = '0%';
+  });
+}
+
+/* ── Home and Work ────────────────────────────────────────────
+   The two places almost every trip starts or ends at. Without them
+   you retype your own address, which no one does twice. */
+function savedPlaces(){
+  try{ return JSON.parse(store.get('tern.places', '{}')) || {}; }catch(e){ return {}; }
+}
+function savePlace(slot, p){
+  const all = savedPlaces();
+  all[slot] = { name:p.name, detail:p.detail || '', lat:p.lat, lon:p.lon };
+  store.set('tern.places', JSON.stringify(all));
+}
+function forgetPlace(slot){
+  const all = savedPlaces();
+  delete all[slot];
+  store.set('tern.places', JSON.stringify(all));
+}
+const PLACE_ICON = {
+  home:'<path d="M3 10.5L12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/>',
+  work:'<rect x="3" y="7.5" width="18" height="12.5" rx="2"/><path d="M8.5 7.5V5.5a2 2 0 012-2h3a2 2 0 012 2v2"/>'
+};
+function placesHtml(){
+  const all = savedPlaces();
+  const keys = ['home','work'].filter(k => all[k]);
+  if(!keys.length) return '';
+  return '<div class="places">' + keys.map(k =>
+    '<button class="chip" data-place="' + k + '">' + svg(PLACE_ICON[k], 1.8) +
+    '<span>' + (k === 'home' ? 'Home' : 'Work') + '</span></button>').join('') + '</div>';
+}
+function wirePlaces(scope){
+  (scope || document).querySelectorAll('[data-place]').forEach(el =>
+    el.addEventListener('click', () => {
+      const p = savedPlaces()[el.dataset.place];
+      if(p) setPlace('to', p);
+    }));
+}
+function saveRowHtml(){
+  if(!trip.to) return '';
+  const all = savedPlaces();
+  const same = p => p && Math.abs(p.lat - trip.to.lat) < 1e-4 && Math.abs(p.lon - trip.to.lon) < 1e-4;
+  const bits = ['home','work'].filter(k => !same(all[k])).map(k =>
+    '<button class="chip" data-save="' + k + '">' + svg(PLACE_ICON[k], 1.8) +
+    '<span>' + (all[k] ? 'Replace ' : 'Save as ') + (k === 'home' ? 'Home' : 'Work') + '</span></button>');
+  if(!bits.length) return '';
+  return '<div class="saverow">' + bits.join('') + '</div>';
+}
+function wireSaveRow(){
+  document.querySelectorAll('[data-save]').forEach(el =>
+    el.addEventListener('click', () => {
+      const k = el.dataset.save;
+      savePlace(k, trip.to);
+      toast((k === 'home' ? 'Home' : 'Work') + ' set to ' + trip.to.name, 3000);
+      renderOptions();
+    }));
 }
 function emptyState(){
   $('live').hidden = true;
@@ -711,7 +795,8 @@ function emptyState(){
       '<div class="eicon">' + svg('<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>', 2) + '</div>' +
       '<h3>Where are you going?</h3>' +
       '<p>Type a destination above, or tap anywhere on the map. ' +
-      'We will price up driving, transit, cycling and walking side by side.</p>' +
+      'Every way of getting there is priced at once, with live traffic.</p>' +
+      placesHtml() +
       recentHtml() +
       '<div class="tips">' +
         '<span>Tap the map to drop a point</span>' +
@@ -719,6 +804,7 @@ function emptyState(){
       '</div>' +
     '</div>';
   wireRecents();
+  wirePlaces();
 }
 function recentHtml(){
   const list = recents();
@@ -948,7 +1034,8 @@ function renderOptions(){
       chain + ((sum || liveTag) ? '<div class="sum">' + esc(sum) + (sum && liveTag ? ' · ' : '') + liveTag + '</div>' : '') +
       (it === current ? detailHtml(it) : '') + '</div>';
   }).join('');
-  $('results').innerHTML = html;
+  $('results').innerHTML = html + saveRowHtml();
+  wireSaveRow();
   $('results').querySelectorAll('.opt').forEach(el => {
     el.addEventListener('click', ev => {
       if(ev.target.closest('.step') || ev.target.closest('.btn')) return;
@@ -993,6 +1080,7 @@ function detailHtml(it){
   const canNav = it.mode !== 'transit' && it.legs[0] && it.legs[0].steps.length;
   const go = canNav
     ? '<div class="go"><button class="btn primary" id="startNav">Start</button>' +
+      '<span class="spacer"></span>' +
       '<button class="btn" id="unitBtn">' + (IMP() ? 'mi' : 'km') + '</button></div>'
     : '';
   return go + '<div class="steps">' + rows + '</div>';

@@ -117,20 +117,31 @@ svg{width:18px;height:18px;flex:none}
 .mini.swap{align-self:center}
 
 /* ── modes ──────────────────────────────────────────────── */
-#modes{display:grid;grid-template-columns:repeat(4,1fr);margin-top:18px;
-  border:1px solid var(--line);border-radius:var(--r)}
-.mode{display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 2px 9px;
-  border:0;border-right:1px solid var(--line);background:none;color:var(--ink3);
-  cursor:pointer;transition:.15s var(--ease)}
-.mode:last-child{border-right:0}
-.mode svg{width:17px;height:17px}
-.mode span{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
-.mode em{font-style:normal;font-family:var(--display);font-size:13px;font-weight:600;
-  color:var(--ink2);min-height:17px;letter-spacing:-.02em}
-.mode:hover{color:var(--ink2)}
+#modesHead{margin:20px 0 9px}
+#modes{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.mode{position:relative;display:grid;grid-template-columns:20px 1fr auto;
+  grid-template-areas:"ic name time" "ic bar time";
+  align-items:center;column-gap:12px;row-gap:6px;padding:12px 14px;text-align:left;
+  border:0;border-bottom:1px solid var(--line);background:none;color:var(--ink3);
+  cursor:pointer;transition:background .15s var(--ease)}
+.mode:last-child{border-bottom:0}
+.mode svg{grid-area:ic;width:19px;height:19px}
+.mode span{grid-area:name;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase}
+.mode em{grid-area:time;font-style:normal;font-family:var(--display);font-size:20px;font-weight:700;
+  letter-spacing:-.035em;color:var(--ink2);min-width:72px;text-align:right;
+  font-variant-numeric:tabular-nums}
+.etabar{grid-area:bar;display:block;height:3px;border-radius:3px;background:var(--line);overflow:hidden}
+.etabar b{display:block;height:100%;width:0;border-radius:3px;background:var(--ink3);
+  transition:width .55s var(--ease),background .2s}
+.mode:hover{background:var(--raise);color:var(--ink2)}
 .mode.on{color:var(--accent);background:var(--raise)}
 .mode.on em{color:var(--accent)}
+.mode.on .etabar b{background:var(--accent)}
+.mode.on::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--accent)}
+.mode.busy em{color:var(--ink3)}
 .mode.busy em::after{content:"··";letter-spacing:2px}
+.mode.none em{font-size:13px;font-weight:500;letter-spacing:0}
+.mode.none .etabar{opacity:.4}
 
 #whenbar{display:flex;align-items:center;gap:8px;margin-top:14px}
 #whenBtn{display:flex;align-items:center;gap:8px;height:32px;padding:0 13px;border:1px solid var(--line);
@@ -191,6 +202,15 @@ html[data-theme="light"] #whenInput{color-scheme:light}
 .empty p{margin:0;font-size:13.5px;color:var(--ink2);line-height:1.65;max-width:30ch}
 .tips{display:flex;flex-direction:column;gap:0;margin-top:22px;border-top:1px solid var(--line)}
 .tips span{font-size:12.5px;color:var(--ink2);padding:11px 0;border-bottom:1px solid var(--line)}
+.places{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+.saverow{display:flex;flex-wrap:wrap;gap:8px;padding:16px 0 4px}
+.chip{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 13px;
+  border:1px solid var(--line2);border-radius:var(--r-sm);background:none;color:var(--ink);
+  font-family:var(--display);font-size:12.5px;font-weight:600;cursor:pointer;
+  transition:.15s var(--ease);white-space:nowrap}
+.chip svg{width:15px;height:15px;color:var(--ink3)}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.chip:hover svg{color:var(--accent)}
 .recents{margin-top:24px}
 .rhead{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
   color:var(--ink3);margin-bottom:4px}
@@ -231,13 +251,15 @@ html[data-theme="light"] #whenInput{color-scheme:light}
 .step .a{font-size:13.5px;line-height:1.45;transition:color .15s var(--ease)}
 .step .b{font-size:11.5px;color:var(--ink3);margin-top:3px;font-family:var(--display);
   font-variant-numeric:tabular-nums}
-.go{display:flex;gap:10px;margin:18px 0 4px}
+.go{display:flex;gap:10px;margin:16px 0 4px;align-items:center}
 .btn{height:44px;padding:0 20px;border:1px solid var(--line2);border-radius:var(--r-sm);
   background:none;font-family:var(--display);font-size:13.5px;font-weight:600;letter-spacing:.01em;
   cursor:pointer;display:grid;place-items:center;transition:.15s var(--ease)}
 .btn:hover{border-color:var(--ink3)}
-.btn.primary{flex:1;background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary{flex:none;min-width:116px;background:var(--accent);border-color:var(--accent);color:#fff;
+  letter-spacing:.06em;text-transform:uppercase;font-size:12.5px}
 .btn.primary:hover{background:#e84d14;border-color:#e84d14}
+.go .spacer{flex:1}
 #credit{padding:14px 20px;border-top:1px solid var(--line);font-size:10.5px;color:var(--ink3);line-height:1.6}
 #credit a{color:var(--ink2);text-decoration:none}
 #credit a:hover{color:var(--accent)}
@@ -380,7 +402,15 @@ html[data-theme="light"] #whenInput{color-scheme:light}
   #grab{display:block;padding:9px 0 3px;cursor:grab;touch-action:none;flex:none}
   #grab i{display:block;width:38px;height:4px;margin:0 auto;border-radius:4px;background:var(--line2)}
   #panel.dragging #grab{cursor:grabbing}
-  #brand{padding:6px 18px 14px;touch-action:none}
+  #brand{padding:2px 18px 10px;touch-action:none;gap:9px}
+  #brand .mark{width:22px;height:22px}
+  #brand .mark svg{width:13px;height:13px}
+  #brand h1{font-size:15px}
+  .ghost{width:28px;height:28px}
+  #modesHead{margin:16px 0 8px}
+  .mode{padding:11px 13px}
+  .mode em{font-size:19px;min-width:66px}
+  .field input{height:42px}
   #planner{padding:0 18px calc(14px + env(safe-area-inset-bottom))}
   #gpsbar{margin:0 18px 14px}
   #results{touch-action:pan-y;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
@@ -458,22 +488,23 @@ html[data-theme="light"] #whenInput{color-scheme:light}
       </button>
     </div>
 
+    <div class="cap" id="modesHead">Ways to get there</div>
     <nav id="modes" role="tablist">
       <button class="mode" data-mode="drive" role="tab" title="Drive">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14M4 17v-4.2l1.8-4.3A2 2 0 017.6 7h8.8a2 2 0 011.8 1.5L20 12.8V17"/><circle cx="7.5" cy="17" r="1.6"/><circle cx="16.5" cy="17" r="1.6"/></svg>
-        <span>Drive</span><em class="eta"></em>
+        <span>Drive</span><em class="eta"></em><i class="etabar"><b></b></i>
       </button>
       <button class="mode" data-mode="transit" role="tab" title="Transit">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="13" rx="2.5"/><path d="M6 10h12M9 20l-1.5 2M15 20l1.5 2M8 16.5h.01M16 16.5h.01"/></svg>
-        <span>Transit</span><em class="eta"></em>
+        <span>Transit</span><em class="eta"></em><i class="etabar"><b></b></i>
       </button>
       <button class="mode" data-mode="bike" role="tab" title="Bike">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17" r="3.3"/><circle cx="18.5" cy="17" r="3.3"/><path d="M5.5 17l4-9h5M12 17l3-8M14 8h3"/></svg>
-        <span>Bike</span><em class="eta"></em>
+        <span>Bike</span><em class="eta"></em><i class="etabar"><b></b></i>
       </button>
       <button class="mode" data-mode="walk" role="tab" title="Walk">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="1.8"/><path d="M11 21l2-6-2.5-2.5L9.5 9 13 7.5l3 2.5 2.5 1M10.5 12.5L7 15l-1 6"/></svg>
-        <span>Walk</span><em class="eta"></em>
+        <span>Walk</span><em class="eta"></em><i class="etabar"><b></b></i>
       </button>
     </nav>
 
@@ -1321,8 +1352,9 @@ async function planAll(){
   if(hav(trip.from, trip.to) < 40){
     options = []; current = null;
     paintRoute(null);
-    document.querySelectorAll('.mode').forEach(el => {
-      el.classList.remove('busy'); el.querySelector('em').textContent = '—'; });
+    Object.keys(etaCache).forEach(k => delete etaCache[k]);
+    clearModeBars();
+    ['drive','transit','bike','walk'].forEach(m => setTab(m, '—'));
     $('results').innerHTML = '<div class="note"><b>You are already there.</b><br>' +
       'The start and the destination are the same place. Pick somewhere else to go.</div>';
     return;
@@ -1331,6 +1363,7 @@ async function planAll(){
   options = []; current = null;
   paintRoute(null);
   $('results').innerHTML = '<div class="note">Finding routes…</div>';
+  clearModeBars();
   document.querySelectorAll('.mode').forEach(el => { el.classList.add('busy'); el.querySelector('em').textContent = ''; });
 
   const jobs = ['drive','transit','bike','walk'].map(async m => {
@@ -1355,7 +1388,89 @@ function setTab(m, txt){
   const el = document.querySelector('.mode[data-mode="' + m + '"]');
   if(!el) return;
   el.classList.remove('busy');
+  el.classList.toggle('none', txt === 'none' || txt === '—');
   el.querySelector('em').textContent = txt;
+  paintModeBars();
+}
+/* The point of this app is that you see every way of getting there at
+   once. Scale each bar against the slowest option so the trade-off is a
+   shape you take in at a glance, not four numbers to compare in your head. */
+function paintModeBars(){
+  const have = ['drive','transit','bike','walk']
+    .map(m => etaCache[m]).filter(v => typeof v === 'number' && isFinite(v) && v > 0);
+  const slowest = have.length ? Math.max.apply(null, have) : 0;
+  ['drive','transit','bike','walk'].forEach(m => {
+    const el = document.querySelector('.mode[data-mode="' + m + '"]');
+    if(!el) return;
+    const bar = el.querySelector('.etabar b');
+    if(!bar) return;
+    const v = etaCache[m];
+    const pct = (slowest && typeof v === 'number' && isFinite(v) && v > 0)
+      ? Math.max(5, Math.round((v / slowest) * 100)) : 0;
+    bar.style.width = pct + '%';
+  });
+}
+function clearModeBars(){
+  document.querySelectorAll('.mode').forEach(el => {
+    el.classList.remove('none');
+    const b = el.querySelector('.etabar b');
+    if(b) b.style.width = '0%';
+  });
+}
+
+/* ── Home and Work ────────────────────────────────────────────
+   The two places almost every trip starts or ends at. Without them
+   you retype your own address, which no one does twice. */
+function savedPlaces(){
+  try{ return JSON.parse(store.get('tern.places', '{}')) || {}; }catch(e){ return {}; }
+}
+function savePlace(slot, p){
+  const all = savedPlaces();
+  all[slot] = { name:p.name, detail:p.detail || '', lat:p.lat, lon:p.lon };
+  store.set('tern.places', JSON.stringify(all));
+}
+function forgetPlace(slot){
+  const all = savedPlaces();
+  delete all[slot];
+  store.set('tern.places', JSON.stringify(all));
+}
+const PLACE_ICON = {
+  home:'<path d="M3 10.5L12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/>',
+  work:'<rect x="3" y="7.5" width="18" height="12.5" rx="2"/><path d="M8.5 7.5V5.5a2 2 0 012-2h3a2 2 0 012 2v2"/>'
+};
+function placesHtml(){
+  const all = savedPlaces();
+  const keys = ['home','work'].filter(k => all[k]);
+  if(!keys.length) return '';
+  return '<div class="places">' + keys.map(k =>
+    '<button class="chip" data-place="' + k + '">' + svg(PLACE_ICON[k], 1.8) +
+    '<span>' + (k === 'home' ? 'Home' : 'Work') + '</span></button>').join('') + '</div>';
+}
+function wirePlaces(scope){
+  (scope || document).querySelectorAll('[data-place]').forEach(el =>
+    el.addEventListener('click', () => {
+      const p = savedPlaces()[el.dataset.place];
+      if(p) setPlace('to', p);
+    }));
+}
+function saveRowHtml(){
+  if(!trip.to) return '';
+  const all = savedPlaces();
+  const same = p => p && Math.abs(p.lat - trip.to.lat) < 1e-4 && Math.abs(p.lon - trip.to.lon) < 1e-4;
+  const bits = ['home','work'].filter(k => !same(all[k])).map(k =>
+    '<button class="chip" data-save="' + k + '">' + svg(PLACE_ICON[k], 1.8) +
+    '<span>' + (all[k] ? 'Replace ' : 'Save as ') + (k === 'home' ? 'Home' : 'Work') + '</span></button>');
+  if(!bits.length) return '';
+  return '<div class="saverow">' + bits.join('') + '</div>';
+}
+function wireSaveRow(){
+  document.querySelectorAll('[data-save]').forEach(el =>
+    el.addEventListener('click', () => {
+      const k = el.dataset.save;
+      savePlace(k, trip.to);
+      toast((k === 'home' ? 'Home' : 'Work') + ' set to ' + trip.to.name, 3000);
+      renderOptions();
+    }));
 }
 function emptyState(){
   $('live').hidden = true;
@@ -1364,7 +1479,8 @@ function emptyState(){
       '<div class="eicon">' + svg('<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>', 2) + '</div>' +
       '<h3>Where are you going?</h3>' +
       '<p>Type a destination above, or tap anywhere on the map. ' +
-      'We will price up driving, transit, cycling and walking side by side.</p>' +
+      'Every way of getting there is priced at once, with live traffic.</p>' +
+      placesHtml() +
       recentHtml() +
       '<div class="tips">' +
         '<span>Tap the map to drop a point</span>' +
@@ -1372,6 +1488,7 @@ function emptyState(){
       '</div>' +
     '</div>';
   wireRecents();
+  wirePlaces();
 }
 function recentHtml(){
   const list = recents();
@@ -1601,7 +1718,8 @@ function renderOptions(){
       chain + ((sum || liveTag) ? '<div class="sum">' + esc(sum) + (sum && liveTag ? ' · ' : '') + liveTag + '</div>' : '') +
       (it === current ? detailHtml(it) : '') + '</div>';
   }).join('');
-  $('results').innerHTML = html;
+  $('results').innerHTML = html + saveRowHtml();
+  wireSaveRow();
   $('results').querySelectorAll('.opt').forEach(el => {
     el.addEventListener('click', ev => {
       if(ev.target.closest('.step') || ev.target.closest('.btn')) return;
@@ -1646,6 +1764,7 @@ function detailHtml(it){
   const canNav = it.mode !== 'transit' && it.legs[0] && it.legs[0].steps.length;
   const go = canNav
     ? '<div class="go"><button class="btn primary" id="startNav">Start</button>' +
+      '<span class="spacer"></span>' +
       '<button class="btn" id="unitBtn">' + (IMP() ? 'mi' : 'km') + '</button></div>'
     : '';
   return go + '<div class="steps">' + rows + '</div>';

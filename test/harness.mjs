@@ -15,6 +15,7 @@ const mkEl = (id='') => ({ id, innerHTML:'', textContent:'', value:'', hidden:fa
   set className(v){ this._cn=v; }, get className(){ return this._cn||''; },
   addEventListener(ev,fn){ (this._h=this._h||{})[ev]=fn; },
   querySelector(sel){ if(sel==='em') return this._em||(this._em=mkEl('em'));
+                      if(sel==='.etabar b') return this._bar||(this._bar=mkEl('bar'));
                       if(sel==='i') return this._i||(this._i=mkEl('i'));
                       if(sel==='span') return this._sp||(this._sp=mkEl('span'));
                       return mkEl('x'); },
@@ -237,6 +238,8 @@ const probe = `;globalThis.T = { fmtDist, fmtDur, fmtShort, decodePoly, geocode,
   get departAt(){return departAt}, set departAt(v){departAt=v}, whenLabel, setDepart,
   transitProbe, nextWeekdayMorning, renderError, set mode(v){mode=v},
   sheetStops, snapSheet, nearestStop, layoutSheet, sheetPad, applySheet,
+  paintModeBars, clearModeBars, savedPlaces, savePlace, forgetPlace, placesHtml, saveRowHtml,
+  emptyState, get etaCache(){return etaCache},
   tilesHeld, tileWatch, fatal, toast, get gotTile(){return gotTile}, set gotTile(v){gotTile=v},
   get sheetIdx(){return sheetIdx}, set sheetIdx(v){sheetIdx=v},
   get sheetPx(){return sheetPx}, sheetDown, sheetMove, sheetUp, isPhone,
@@ -777,6 +780,45 @@ console.log('   says: ' + said);
 chk(/already there/i.test(said), 'it says so plainly instead of routing');
 chk(T.current === null, 'and offers no route to start');
 T.trip.from = A; T.trip.to = B;
+
+console.log('\n── every way of getting there, compared at a glance');
+const ec = T.etaCache;
+Object.keys(ec).forEach(k => delete ec[k]);
+ec.drive = 600; ec.bike = 1200; ec.walk = 3000; ec.transit = null;
+T.paintModeBars();
+const widths = {};
+['drive','transit','bike','walk'].forEach(m => {
+  widths[m] = document.querySelector('.mode[data-mode="' + m + '"]').querySelector('.etabar b').style.width;
+});
+console.log('   ' + JSON.stringify(widths));
+chk(widths.walk === '100%', 'the slowest option fills the bar');
+chk(widths.drive === '20%', 'a trip a fifth as long draws a fifth of the bar');
+chk(widths.bike === '40%', 'and the others scale between them');
+chk(widths.transit === '0%', 'a mode with no route draws nothing');
+T.clearModeBars();
+chk(document.querySelector('.mode[data-mode="walk"]').querySelector('.etabar b').style.width === '0%',
+  'starting a new search empties them rather than leaving the last trip on screen');
+
+console.log('\n── Home and Work');
+T.forgetPlace('home'); T.forgetPlace('work');
+chk(T.placesHtml() === '', 'nothing is offered before anything is saved');
+T.trip.to = { name:'Freedom Park', lat:35.1924, lon:-80.8456 };
+let row = T.saveRowHtml();
+console.log('   offered: ' + row.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim());
+chk(/Save as Home/.test(row) && /Save as Work/.test(row), 'with a destination set, both are offered');
+T.savePlace('home', T.trip.to);
+chk(/Home/.test(T.placesHtml()), 'a saved place shows up as a chip');
+row = T.saveRowHtml();
+chk(!/Home/.test(row), 'and it stops offering to save the place you are already at');
+chk(/Work/.test(row), 'while the other is still offered');
+const back = T.savedPlaces().home;
+console.log('   stored: ' + back.name + ' ' + back.lat + ',' + back.lon);
+chk(back.lat === 35.1924 && back.lon === -80.8456, 'with its coordinates, so it routes without a lookup');
+T.emptyState();
+chk(/data-place="home"/.test(document.getElementById('results').innerHTML),
+  'and it is there on the empty screen, one tap from a route');
+T.forgetPlace('home');
+chk(!T.savedPlaces().home, 'and it can be forgotten');
 
 console.log('\nhosts: ' + [...new Set(seen)].join('\n       '));
 console.log(ok ? '\nALL CHECKS PASSED' : '\nSOME CHECKS FAILED');
