@@ -659,6 +659,18 @@ async function planMode(m){
 let planToken = 0;
 async function planAll(){
   if(!trip.from || !trip.to) return;
+  /* Routing to the spot you are standing on produces a route whose end
+     is also its start, and navigation then declares you arrived before
+     you have moved. Say so instead. */
+  if(hav(trip.from, trip.to) < 40){
+    options = []; current = null;
+    paintRoute(null);
+    document.querySelectorAll('.mode').forEach(el => {
+      el.classList.remove('busy'); el.querySelector('em').textContent = '—'; });
+    $('results').innerHTML = '<div class="note"><b>You are already there.</b><br>' +
+      'The start and the destination are the same place. Pick somewhere else to go.</div>';
+    return;
+  }
   const token = ++planToken;
   options = []; current = null;
   paintRoute(null);
@@ -1373,6 +1385,7 @@ function startNav(it){
   nav.travelled = 0;
   nav.manual = null;
   nav.lastCheck = Date.now();
+  nav.began = null;          // how far along the route you were when you set off
   $('nav').hidden = false;
   if(isPhone()) $('panel').style.transform = '';
   $('panel').classList.add('hid');
@@ -1532,7 +1545,10 @@ function paintNav(){
   $('navProgressFill').style.width = pct.toFixed(1) + '%';
   voiceTick();
   recheckTraffic();
-  if(me && nav.routeLen && nav.travelled > 0 && left < 35) arrive();
+  if(nav.began == null && me && nav.routeLen) nav.began = nav.travelled;
+  // you have arrived only once you have actually covered some of the route
+  const moved = nav.began == null ? 0 : nav.travelled - nav.began;
+  if(me && nav.routeLen && left < 35 && moved > 50) arrive();
 }
 function navStep(d){
   if(!nav) return;
@@ -1860,10 +1876,16 @@ function sheetStops(){
   const full = Math.round(h * 0.88);
   return [Math.min(SHEET_PEEK, full), Math.round(h * 0.55), full];
 }
+const sheetHidden = () => $('panel').classList.contains('hid');
 function applySheet(px){
   sheetPx = px;
   const p = $('panel');
   p.style.setProperty('--sheet', px + 'px');
+  /* While navigating, the panel is off screen and the nav UI owns it.
+     An inline transform beats the stylesheet, so writing one here would
+     haul the panel back up over the turn card. iOS fires resize every
+     time the address bar moves, so this happens constantly in the car. */
+  if(sheetHidden()){ p.style.transform = ''; return; }
   /* Drive the transform straight from JS. A custom property inside a
      calc() in a transform is one indirection too many for some engines
      to re-evaluate reliably, and a sheet that ignores you is the bug
@@ -1872,6 +1894,7 @@ function applySheet(px){
   p.style.transform = 'translateY(' + Math.round(full - px) + 'px)';
 }
 function snapSheet(i, quiet){
+  if(sheetHidden()) return;
   const stops = sheetStops();
   sheetIdx = Math.max(0, Math.min(stops.length - 1, i));
   applySheet(stops[sheetIdx]);
@@ -1888,6 +1911,7 @@ function nearestStop(px){
 }
 function layoutSheet(){
   const p = $('panel'), stops = sheetStops();
+  if(sheetHidden()){ p.style.transform = ''; return; }
   if(!isPhone()){                       // desktop drives the panel from CSS alone
     p.style.transform = '';
     p.style.removeProperty('--sheet');
@@ -1898,7 +1922,7 @@ function layoutSheet(){
   applySheet(stops[Math.max(0, Math.min(2, sheetIdx))]);
 }
 function sheetDown(e){
-  if(!isPhone() || e.button) return;
+  if(!isPhone() || e.button || sheetHidden()) return;
   sheetDrag = { y:e.clientY, from:sheetPx || sheetStops()[sheetIdx], t:Date.now(), moved:false };
   $('panel').classList.add('dragging');
   try{ e.currentTarget.setPointerCapture(e.pointerId); }catch(err){}

@@ -487,6 +487,44 @@ console.log('   at the end: arrived card ' + (E['arrived'].hidden ? 'HIDDEN' : '
 chk(E['arrived'].hidden === false, 'arrival card appears at the destination');
 chk(E['navBar'].hidden === true, 'nav bar yields to the arrival card');
 
+console.log('\n── starting where you already are');
+T.endNav();
+E['arrived'].hidden = true;
+T.me = { lat:line[100][1], lon:line[100][0] };      // already standing at the destination
+T.startNav(route);
+T.paintNav(); T.paintNav();
+console.log('   arrived card on setting off at the end: ' + (E['arrived'].hidden ? 'hidden' : 'SHOWN'));
+chk(E['arrived'].hidden === true,
+  'being parked at the destination does not announce arrival before you move');
+T.me = { lat:line[99][1], lon:line[99][0] };
+T.paintNav();
+chk(E['arrived'].hidden === true, 'nor does drifting a few metres');
+T.endNav();
+
+console.log('\n── the sheet stays down while navigating');
+globalThis.__phone = true;
+globalThis.innerHeight = 844;
+const pnl = document.getElementById('panel');
+T.me = { lat:line[0][1], lon:line[0][0] };
+T.startNav(route);
+console.log('   panel classes after Start: ' + [...pnl.classList._s].join(',') +
+  ' · transform "' + pnl.style.transform + '"');
+chk(pnl.classList.contains('hid'), 'starting a route puts the panel away');
+chk(pnl.style.transform === '', 'and leaves no inline transform to override that');
+T.layoutSheet();                                   // iOS fires this every address-bar move
+chk(pnl.style.transform === '', 'a resize mid-drive does not haul it back over the turn card');
+T.snapSheet(2, true);
+chk(pnl.style.transform === '', 'nor does anything else asking the sheet to open');
+T.applySheet(700);
+chk(pnl.style.transform === '', 'nor a drag landing while it is hidden');
+T.endNav();
+chk(!pnl.classList.contains('hid'), 'ending the route gives the panel back');
+console.log('   after ending: transform "' + pnl.style.transform + '"');
+chk(pnl.style.transform !== '', 'and restores it to a real resting height');
+globalThis.__phone = false;
+globalThis.innerHeight = 800;
+T.layoutSheet();
+
 // voice announcements as you approach the turn
 T.endNav(); T.me = { lat:line[0][1], lon:line[0][0] }; T.startNav(route);
 SPOKEN.length = 0;
@@ -726,6 +764,17 @@ T.fatal('Something broke', 'with no detail to show');
 console.log('   detail box hidden with no detail: ' + document.getElementById('fatalPre').hidden);
 chk(document.getElementById('fatalPre').hidden === true, 'an empty detail box is hidden rather than shown blank');
 fatalEl.hidden = true;
+
+console.log('\n── asking for a route to where you are standing');
+T.trip.from = { name:'Here', lat:35.2271, lon:-80.8431 };
+T.trip.to   = { name:'Also here', lat:35.22712, lon:-80.84312 };
+console.log('   gap: ' + Math.round(T.hav(T.trip.from, T.trip.to)) + ' m');
+await T.planAll();
+const said = document.getElementById('results').innerHTML.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+console.log('   says: ' + said);
+chk(/already there/i.test(said), 'it says so plainly instead of routing');
+chk(T.current === null, 'and offers no route to start');
+T.trip.from = A; T.trip.to = B;
 
 console.log('\nhosts: ' + [...new Set(seen)].join('\n       '));
 console.log(ok ? '\nALL CHECKS PASSED' : '\nSOME CHECKS FAILED');
