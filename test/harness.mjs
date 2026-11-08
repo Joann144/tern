@@ -16,14 +16,18 @@ const mkEl = (id='') => ({ id, innerHTML:'', textContent:'', value:'', hidden:fa
   addEventListener(ev,fn){ (this._h=this._h||{})[ev]=fn; },
   querySelector(sel){ if(sel==='em') return this._em||(this._em=mkEl('em'));
                       if(sel==='.etabar b') return this._bar||(this._bar=mkEl('bar'));
+                      if(sel==='.cone') return this._cone||(this._cone=mkEl('cone'));
                       if(sel==='i') return this._i||(this._i=mkEl('i'));
                       if(sel==='span') return this._sp||(this._sp=mkEl('span'));
                       return mkEl('x'); },
   querySelectorAll(){ return []; },
   getBoundingClientRect:()=>({left:0,top:0,width:1200,height:800}),
   getContext:()=>({}), focus(){}, blur(){}, remove(){},
+  _attr:{}, setAttribute(k,v){ this._attr[k]=v; }, getAttribute(k){ return this._attr[k]; },
+  setPointerCapture(){}, releasePointerCapture(){}, dispatchEvent(){ return true; },
 });
 const MODES = ['drive','transit','bike','walk'].map(m => { const e = mkEl('mode-'+m); e.dataset.mode = m; return e; });
+let __locks = 0, __released = 0;
 globalThis.matchMedia = q => ({ matches:/max-width:760px/.test(q) ? !!globalThis.__phone : false,
   media:q, addEventListener(){}, removeEventListener(){}, addListener(){}, removeListener(){} });
 globalThis.document = {
@@ -44,6 +48,8 @@ globalThis.localStorage = { getItem:k=>k in LS?LS[k]:null, setItem:(k,v)=>LS[k]=
   removeItem:k=>{ delete LS[k]; } };
 Object.defineProperty(globalThis, 'navigator', { configurable:true, writable:true, value:{
   onLine:true,
+  wakeLock:{ async request(){ __locks++;
+    return { addEventListener(){}, async release(){ __released++; } }; } },
   geolocation:{
     mode:'ok',          // 'ok' | 'timeout' | 'precise-timeout' | 'denied'
     calls:[],
@@ -78,7 +84,8 @@ class FakeMap {
   setStyle(){} queryRenderedFeatures(){ return []; }
 }
 globalThis.maplibregl = { Map: FakeMap,
-  Marker: class { constructor(){} setLngLat(){return this} addTo(){return this} remove(){} },
+  Marker: class { constructor(o){ this._el=(o&&o.element)||mkEl('mk'); }
+    getElement(){ return this._el } setLngLat(){return this} addTo(){return this} remove(){} },
   ScaleControl: class {} };
 
 /* ── encoded polylines for the mocks ──────────────────────── */
@@ -239,6 +246,8 @@ const probe = `;globalThis.T = { fmtDist, fmtDur, fmtShort, decodePoly, geocode,
   transitProbe, nextWeekdayMorning, renderError, set mode(v){mode=v},
   sheetStops, snapSheet, nearestStop, layoutSheet, sheetPad, applySheet,
   paintModeBars, clearModeBars, savedPlaces, savePlace, forgetPlace, placesHtml, saveRowHtml,
+  keepAwake, setHeading, paintHeading, paintThemeColor, showMe,
+  get wakeLock(){return wakeLock}, get meHeading(){return meHeading}, set theme(v){theme=v},
   emptyState, get etaCache(){return etaCache},
   tilesHeld, tileWatch, fatal, toast, get gotTile(){return gotTile}, set gotTile(v){gotTile=v},
   get sheetIdx(){return sheetIdx}, set sheetIdx(v){sheetIdx=v},
@@ -819,6 +828,38 @@ chk(/data-place="home"/.test(document.getElementById('results').innerHTML),
   'and it is there on the empty screen, one tap from a route');
 T.forgetPlace('home');
 chk(!T.savedPlaces().home, 'and it can be forgotten');
+
+console.log('\n── a phone on a dashboard');
+T.endNav();                        // clear any lock an earlier block left open
+await new Promise(r => setTimeout(r, 10));
+const locks0 = __locks, rel0 = __released;
+T.me = { lat:line[0][1], lon:line[0][0] };
+T.startNav(route);
+await new Promise(r => setTimeout(r, 10));
+console.log('   screen locks taken on Start: ' + (__locks - locks0));
+chk(__locks - locks0 === 1, 'starting a drive keeps the screen awake');
+T.endNav();
+await new Promise(r => setTimeout(r, 10));
+console.log('   released on End: ' + (__released - rel0));
+chk(__released - rel0 === 1, 'and ending it lets the screen sleep again');
+
+console.log('\n── which way you are pointing');
+T.showMe(35.2271, -80.8431);
+T.setHeading(90);
+chk(T.meHeading === 90, 'a GPS heading is taken');
+T.setHeading(NaN);
+chk(T.meHeading === 90, 'a missing one does not wipe the last good heading');
+T.setHeading(null);
+chk(T.meHeading === 90, 'nor does a null');
+
+console.log('\n── the status bar belongs to the app');
+T.theme = 'dark'; T.paintThemeColor();
+const dark = document.getElementById('themeColor').getAttribute('content');
+T.theme = 'light'; T.paintThemeColor();
+const light = document.getElementById('themeColor').getAttribute('content');
+console.log('   dark ' + dark + ' · light ' + light);
+chk(dark === '#0a0b0d' && light === '#fbfaf8', 'it follows the theme rather than staying black');
+T.theme = 'dark'; T.paintThemeColor();
 
 console.log('\nhosts: ' + [...new Set(seen)].join('\n       '));
 console.log(ok ? '\nALL CHECKS PASSED' : '\nSOME CHECKS FAILED');

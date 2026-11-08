@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Tern</title>
 <meta name="description" content="Open map and trip planner. Drive, transit, bike and walk directions on OpenStreetMap data.">
+<meta name="theme-color" id="themeColor" content="#0a0b0d">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -50,6 +51,15 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--
 button,input{font:inherit;color:inherit}
 svg{width:18px;height:18px;flex:none}
 #map{position:absolute;inset:0}
+.btn:active,.nb:active,.chip:active,.mode:active,.rec:active,.tool:active,
+.ghost:active,.mini:active,#whenBtn:active,#whenNow:active,#gpsFix:active,#gpsPick:active{
+  transform:scale(.97)}
+.btn,.nb,.chip,.mode,.rec,.tool,.ghost,.mini,#whenBtn,#whenNow,#gpsFix,#gpsPick{
+  transition:transform .09s var(--ease),background .15s var(--ease),
+             border-color .15s var(--ease),color .15s var(--ease)}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
 *::-webkit-scrollbar{width:9px;height:9px}
 *::-webkit-scrollbar-track{background:transparent}
 *::-webkit-scrollbar-thumb{background:var(--line2);border-radius:9px;
@@ -222,6 +232,10 @@ html[data-theme="light"] #whenInput{color-scheme:light}
 .rec:hover svg{color:var(--accent)}
 .rec span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
+.opt{animation:rise .32s var(--ease) both}
+.opt:nth-child(2){animation-delay:.05s}
+.opt:nth-child(3){animation-delay:.1s}
+@keyframes rise{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
 .opt{position:relative;padding:16px 0;cursor:pointer;border-bottom:1px solid var(--line);
   transition:.15s var(--ease)}
 .opt:first-child{border-top:1px solid var(--line)}
@@ -287,8 +301,14 @@ html[data-theme="light"] #whenInput{color-scheme:light}
   border-radius:var(--r-sm);padding:5px 10px;box-shadow:var(--shadow)}
 #scalebox:has(#trafficStamp:empty){display:none}
 .mk svg{width:24px;height:32px;filter:drop-shadow(0 3px 6px rgba(0,0,0,.4))}
-.me{width:15px;height:15px;border-radius:50%;background:var(--accent);border:2.5px solid #fff;
-  box-shadow:0 0 0 4px rgba(255,90,31,.22),0 2px 6px rgba(0,0,0,.35)}
+.me{position:relative;width:18px;height:18px}
+.me .dot{position:absolute;inset:0;border-radius:50%;background:var(--accent);
+  border:3px solid #fff;box-shadow:0 0 0 5px rgba(255,90,31,.18),0 2px 8px rgba(0,0,0,.4)}
+.me .cone{position:absolute;left:50%;top:50%;width:46px;height:40px;opacity:0;
+  transform-origin:50% 100%;transition:transform .25s linear,opacity .2s;
+  background:conic-gradient(from 160deg at 50% 100%,
+    transparent 0deg, rgba(255,90,31,.42) 12deg, rgba(255,90,31,.06) 36deg, transparent 40deg);
+  clip-path:polygon(50% 100%, 0 0, 100% 0);pointer-events:none}
 
 /* ── navigation ─────────────────────────────────────────── */
 #nav{position:absolute;z-index:30;inset:0;pointer-events:none}
@@ -350,6 +370,38 @@ html[data-theme="light"] #whenInput{color-scheme:light}
 #arrived .who b{font-family:var(--display);font-size:16px;font-weight:700;letter-spacing:-.02em}
 #arrived .who span{font-size:12.5px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
+/* ── driving: read at arm's length, at speed ──────────────────
+   A phone on a dashboard is further away and glanced at, not read.
+   Everything that matters while moving is sized for that, and the
+   landscape case assumes a car mount. */
+@media (max-width:760px){
+  #navCard{top:calc(10px + env(safe-area-inset-top));padding:16px 18px;gap:14px;
+    width:calc(100vw - 20px)}
+  #navCard .turn{width:58px;height:58px}
+  #navCard .turn svg{width:32px;height:32px}
+  #navDist{font-size:38px}
+  #navInstr{font-size:17px;font-weight:550}
+  #navBar .row1{padding:14px 18px 8px;gap:18px}
+  #navBar .stat b{font-size:20px}
+  #navBar .stat.big b{font-size:30px}
+  .nb{height:40px;padding:0 15px;font-size:13.5px}
+  .nb.icon{width:40px}
+}
+@media (max-width:980px) and (orientation:landscape){
+  /* mounted in a car: instructions down one side, map keeps the rest */
+  #navCard{left:auto;right:12px;transform:none;top:calc(10px + env(safe-area-inset-top));
+    width:min(46vw,420px)}
+  #navThen{left:auto;right:12px;transform:none;width:min(46vw,420px);
+    top:calc(112px + env(safe-area-inset-top))}
+  #navBar{left:auto;right:12px;transform:none;width:min(46vw,420px);
+    bottom:calc(12px + env(safe-area-inset-bottom))}
+  #arrived{left:auto;right:12px;transform:none;width:min(46vw,420px)}
+  #recentre{left:24px;right:auto;transform:none;bottom:calc(12px + env(safe-area-inset-bottom));top:auto}
+  #navDist{font-size:34px}
+  #navCard .turn{width:52px;height:52px}
+  #navBar .row1{padding:12px 16px 6px}
+  #panel{height:100vh;border-radius:0}
+}
 /* ── sheets ─────────────────────────────────────────────── */
 #diag,#fatal{position:absolute;inset:0;z-index:45;display:grid;place-items:center;padding:24px;
   background:rgba(6,7,9,.6);overflow-y:auto}
@@ -834,7 +886,15 @@ function isoLocal(ms){
 }
 let mode     = store.get('tern.mode', 'drive');
 let trafficOn= store.get('tern.traffic', '1') === '1';
+
+/* the browser chrome and the status bar should belong to the app,
+   not sit above it in a different colour */
+function paintThemeColor(){
+  const m = document.getElementById('themeColor');
+  if(m) m.setAttribute('content', theme === 'dark' ? '#0a0b0d' : '#fbfaf8');
+}
 document.documentElement.setAttribute('data-theme', theme);
+paintThemeColor();
 
 const IMP = () => units === 'imperial';
 
@@ -1865,12 +1925,33 @@ function wireMap(){
 
 /* ── GPS ──────────────────────────────────────────────────── */
 let me = null, meMk = null, watch = null, following = false, speed = null;
+let meHeading = null;
 function showMe(lat, lon){
   me = { lat, lon };
   if(!meMk){
-    const d = document.createElement('div'); d.className = 'me';
-    meMk = new maplibregl.Marker({ element:d }).setLngLat([lon, lat]).addTo(map);
+    const d = document.createElement('div');
+    d.className = 'me';
+    d.innerHTML = '<i class="cone"></i><i class="dot"></i>';
+    meMk = new maplibregl.Marker({ element:d, rotationAlignment:'map' })
+      .setLngLat([lon, lat]).addTo(map);
   } else meMk.setLngLat([lon, lat]);
+  paintHeading();
+}
+/* Which way you are pointing matters more than where you are when you
+   are deciding whether to turn. */
+function setHeading(deg){
+  if(deg == null || isNaN(deg)) return;
+  meHeading = deg;
+  paintHeading();
+}
+function paintHeading(){
+  if(!meMk) return;
+  const el = meMk.getElement();
+  const cone = el && el.querySelector('.cone');
+  if(!cone) return;
+  if(meHeading == null){ cone.style.opacity = '0'; return; }
+  cone.style.opacity = '1';
+  cone.style.transform = 'translate(-50%,-100%) rotate(' + meHeading + 'deg)';
 }
 function requestFix(){
   return new Promise((resolve, reject) => {
@@ -2044,6 +2125,7 @@ function toggleFollow(){
     if(!navigator.geolocation){ following = false; return; }
     watch = navigator.geolocation.watchPosition(p => {
       showMe(p.coords.latitude, p.coords.longitude);
+      setHeading(p.coords.heading);
       rememberFix(me.lat, me.lon);
       $('locBtn').classList.add('live'); gpsBanner('granted');
       speed = p.coords.speed != null && p.coords.speed >= 0
@@ -2142,6 +2224,25 @@ function snapToRoute(coords, cum, pt){
 
 /* ── turn by turn ─────────────────────────────────────────── */
 let nav = null;
+
+/* ── a phone on a dashboard must not sleep mid-turn ───────── */
+let wakeLock = null;
+async function keepAwake(on){
+  try{
+    if(on){
+      if(wakeLock || !navigator.wakeLock) return;
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } else if(wakeLock){
+      const w = wakeLock; wakeLock = null;
+      await w.release();
+    }
+  }catch(e){ wakeLock = null; }
+}
+// iOS drops the lock whenever you switch away; take it back on return
+document.addEventListener('visibilitychange', () => {
+  if(!document.hidden && nav && !nav.done) keepAwake(true);
+});
 function startNav(it){
   if(!it || !it.legs[0] || !it.legs[0].steps.length) return;
   nav = { steps: it.legs[0].steps, i:0, total: it.duration, dist: it.distance, via: it.via || '',
@@ -2165,6 +2266,7 @@ function startNav(it){
   nav.lastCheck = Date.now();
   nav.began = null;          // how far along the route you were when you set off
   $('nav').hidden = false;
+  keepAwake(true);
   if(isPhone()) $('panel').style.transform = '';
   $('panel').classList.add('hid');
   // the route's own first point is always right; a guessed position may be miles away
@@ -2228,6 +2330,7 @@ async function recheckTraffic(){
 }
 function endNav(){
   stopSim();
+  keepAwake(false);
   reBusy = false;
   if(canSpeak()){ try{ speechSynthesis.cancel(); }catch(e){} }
   nav = null;
@@ -2746,6 +2849,7 @@ $('themeBtn').onclick = () => {
   theme = theme === 'light' ? 'dark' : 'light';
   store.set('tern.theme', theme);
   document.documentElement.setAttribute('data-theme', theme);
+  paintThemeColor();
   const had = !!map.getSource('flow');
   map.setStyle(STYLE[theme]);
   map.once('styledata', () => { if(!had) removeTraffic(); addLayers(); });

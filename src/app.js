@@ -147,7 +147,15 @@ function isoLocal(ms){
 }
 let mode     = store.get('tern.mode', 'drive');
 let trafficOn= store.get('tern.traffic', '1') === '1';
+
+/* the browser chrome and the status bar should belong to the app,
+   not sit above it in a different colour */
+function paintThemeColor(){
+  const m = document.getElementById('themeColor');
+  if(m) m.setAttribute('content', theme === 'dark' ? '#0a0b0d' : '#fbfaf8');
+}
 document.documentElement.setAttribute('data-theme', theme);
+paintThemeColor();
 
 const IMP = () => units === 'imperial';
 
@@ -1178,12 +1186,33 @@ function wireMap(){
 
 /* ── GPS ──────────────────────────────────────────────────── */
 let me = null, meMk = null, watch = null, following = false, speed = null;
+let meHeading = null;
 function showMe(lat, lon){
   me = { lat, lon };
   if(!meMk){
-    const d = document.createElement('div'); d.className = 'me';
-    meMk = new maplibregl.Marker({ element:d }).setLngLat([lon, lat]).addTo(map);
+    const d = document.createElement('div');
+    d.className = 'me';
+    d.innerHTML = '<i class="cone"></i><i class="dot"></i>';
+    meMk = new maplibregl.Marker({ element:d, rotationAlignment:'map' })
+      .setLngLat([lon, lat]).addTo(map);
   } else meMk.setLngLat([lon, lat]);
+  paintHeading();
+}
+/* Which way you are pointing matters more than where you are when you
+   are deciding whether to turn. */
+function setHeading(deg){
+  if(deg == null || isNaN(deg)) return;
+  meHeading = deg;
+  paintHeading();
+}
+function paintHeading(){
+  if(!meMk) return;
+  const el = meMk.getElement();
+  const cone = el && el.querySelector('.cone');
+  if(!cone) return;
+  if(meHeading == null){ cone.style.opacity = '0'; return; }
+  cone.style.opacity = '1';
+  cone.style.transform = 'translate(-50%,-100%) rotate(' + meHeading + 'deg)';
 }
 function requestFix(){
   return new Promise((resolve, reject) => {
@@ -1357,6 +1386,7 @@ function toggleFollow(){
     if(!navigator.geolocation){ following = false; return; }
     watch = navigator.geolocation.watchPosition(p => {
       showMe(p.coords.latitude, p.coords.longitude);
+      setHeading(p.coords.heading);
       rememberFix(me.lat, me.lon);
       $('locBtn').classList.add('live'); gpsBanner('granted');
       speed = p.coords.speed != null && p.coords.speed >= 0
@@ -1455,6 +1485,25 @@ function snapToRoute(coords, cum, pt){
 
 /* ── turn by turn ─────────────────────────────────────────── */
 let nav = null;
+
+/* ── a phone on a dashboard must not sleep mid-turn ───────── */
+let wakeLock = null;
+async function keepAwake(on){
+  try{
+    if(on){
+      if(wakeLock || !navigator.wakeLock) return;
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } else if(wakeLock){
+      const w = wakeLock; wakeLock = null;
+      await w.release();
+    }
+  }catch(e){ wakeLock = null; }
+}
+// iOS drops the lock whenever you switch away; take it back on return
+document.addEventListener('visibilitychange', () => {
+  if(!document.hidden && nav && !nav.done) keepAwake(true);
+});
 function startNav(it){
   if(!it || !it.legs[0] || !it.legs[0].steps.length) return;
   nav = { steps: it.legs[0].steps, i:0, total: it.duration, dist: it.distance, via: it.via || '',
@@ -1478,6 +1527,7 @@ function startNav(it){
   nav.lastCheck = Date.now();
   nav.began = null;          // how far along the route you were when you set off
   $('nav').hidden = false;
+  keepAwake(true);
   if(isPhone()) $('panel').style.transform = '';
   $('panel').classList.add('hid');
   // the route's own first point is always right; a guessed position may be miles away
@@ -1541,6 +1591,7 @@ async function recheckTraffic(){
 }
 function endNav(){
   stopSim();
+  keepAwake(false);
   reBusy = false;
   if(canSpeak()){ try{ speechSynthesis.cancel(); }catch(e){} }
   nav = null;
@@ -2059,6 +2110,7 @@ $('themeBtn').onclick = () => {
   theme = theme === 'light' ? 'dark' : 'light';
   store.set('tern.theme', theme);
   document.documentElement.setAttribute('data-theme', theme);
+  paintThemeColor();
   const had = !!map.getSource('flow');
   map.setStyle(STYLE[theme]);
   map.once('styledata', () => { if(!had) removeTraffic(); addLayers(); });
