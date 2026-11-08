@@ -30,6 +30,12 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--
 button,input{font:inherit;color:inherit}
 svg{width:18px;height:18px;flex:none}
 #map{position:absolute;inset:0}
+*::-webkit-scrollbar{width:9px;height:9px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:var(--line2);border-radius:9px;
+  border:3px solid var(--surface);background-clip:padding-box}
+*::-webkit-scrollbar-thumb:hover{background:var(--ink3);background-clip:padding-box;border:3px solid var(--surface)}
+*{scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
 .maplibregl-ctrl-attrib,.maplibregl-ctrl-bottom-right{display:none!important}
 .num{font-family:var(--display);font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 .cap{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}

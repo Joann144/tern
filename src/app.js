@@ -14,7 +14,7 @@ const PAL = {
     water:'#0b2331', river:'#103043',
     bldgLo:'#1a202a', bldgHi:'#2b3542',
     casing:'#0b0e14', minor:'#222935', mid:'#2d3543', major:'#3d4555',
-    moto:'#6d5527', motoHi:'#9a7a33',
+    moto:'#4b5465', motoHi:'#5d6677',
     rail:'#1d232d', border:'#2c3443',
     label:'#c9d4e2', halo:'#080b11', labelDim:'#8694a7',
     poi:'#6f7f94', poiText:'#93a2b6', waterLabel:'#3f7fa0'
@@ -24,7 +24,7 @@ const PAL = {
     water:'#bfdcea', river:'#a8cfe2',
     bldgLo:'#e8e3d9', bldgHi:'#ddd6c9',
     casing:'#d8d3c8', minor:'#ffffff', mid:'#ffffff', major:'#fdf6e8',
-    moto:'#f3cf96', motoHi:'#e9bd73',
+    moto:'#efe9dd', motoHi:'#e2dace',
     rail:'#ded8cc', border:'#c9c2b4',
     label:'#262d38', halo:'#f7f5f1', labelDim:'#5d6673',
     poi:'#8d7f66', poiText:'#5a5245', waterLabel:'#5b8aa3'
@@ -416,7 +416,7 @@ function rememberRecent(p){
 }
 
 /* ── routers, all returning one shape ─────────────────────── */
-const COLOR = { WALK:'#6b7684', BIKE:'#0f9d58', CAR:'#1f6feb', TRANSIT:'#8b5cf6' };
+const COLOR = { WALK:'#8a93a1', BIKE:'#13a8a0', CAR:'#ff5a1f', TRANSIT:'#7c5cff' };
 
 function osrmText(s){
   const m = s.maneuver || {}, mod = (m.modifier || '').replace(/_/g,' '), on = s.name ? ' onto ' + s.name : '';
