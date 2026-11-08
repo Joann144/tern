@@ -5,7 +5,9 @@ const app = fs.readFileSync(path.join(root, 'src/app.js'), 'utf8');
 /* ── DOM / canvas / map stubs ─────────────────────────────── */
 const E = {};
 const mkEl = (id='') => ({ id, innerHTML:'', textContent:'', value:'', hidden:false, disabled:false,
-  dataset:{}, style:{},
+  dataset:{},
+  style:{ _v:{}, setProperty(k,v){ this._v[k]=v; }, getPropertyValue(k){ return this._v[k]||''; },
+          removeProperty(k){ delete this._v[k]; } },
   classList:{ _s:new Set(),
     add(...c){c.forEach(x=>this._s.add(x))}, remove(...c){c.forEach(x=>this._s.delete(x))},
     toggle(c,v){ v===undefined ? (this._s.has(c)?this._s.delete(c):this._s.add(c)) : (v?this._s.add(c):this._s.delete(c)); },
@@ -21,6 +23,8 @@ const mkEl = (id='') => ({ id, innerHTML:'', textContent:'', value:'', hidden:fa
   getContext:()=>({}), focus(){}, blur(){}, remove(){},
 });
 const MODES = ['drive','transit','bike','walk'].map(m => { const e = mkEl('mode-'+m); e.dataset.mode = m; return e; });
+globalThis.matchMedia = q => ({ matches:/max-width:760px/.test(q) ? !!globalThis.__phone : false,
+  media:q, addEventListener(){}, removeEventListener(){}, addListener(){}, removeListener(){} });
 globalThis.document = {
   hidden:false,
   documentElement:{ setAttribute(){}, },
@@ -232,6 +236,9 @@ const probe = `;globalThis.T = { fmtDist, fmtDur, fmtShort, decodePoly, geocode,
   routeTomTom, routeOSRM, jamData, clock, secsLeft, isoLocal,
   get departAt(){return departAt}, set departAt(v){departAt=v}, whenLabel, setDepart,
   transitProbe, nextWeekdayMorning, renderError, set mode(v){mode=v},
+  sheetStops, snapSheet, nearestStop, layoutSheet, sheetPad, applySheet,
+  get sheetIdx(){return sheetIdx}, set sheetIdx(v){sheetIdx=v},
+  get sheetPx(){return sheetPx}, sheetDown, sheetMove, sheetUp, isPhone,
   gpsBanner, recentreNav, arrive, paintNav, requestFix, locateNow, lastFix, ipLocate, adoptStart,
   speak, spokenDistance, spokenStep, voiceTick, bearing, pointAt, cumulative, startSim, stopSim,
   savedHome, beginPickStart, get userStartFlag(){return userStart}, set userStartFlag(v){userStart=v},
@@ -642,6 +649,56 @@ console.log('   message: ' + txt.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').tri
 chk(/Nothing is running at this hour/.test(txt), 'it says the hour is the problem, not the city');
 chk(/useWhen/.test(txt), 'and offers to plan the trip for when it does run');
 T.mode = 'drive';
+
+console.log('\n── the sheet can be moved on a phone');
+globalThis.__phone = true;
+globalThis.innerHeight = 844;             // a phone, not a desktop
+const stops = T.sheetStops();
+console.log('   stops ' + JSON.stringify(stops) + ' of ' + innerHeight);
+chk(stops.length === 3, 'three resting heights');
+chk(stops[0] < 200, 'the peek gives most of the screen back to the map');
+chk(stops[0] > 150, 'but still leaves the search within reach');
+chk(stops[2] <= innerHeight, 'the tallest never exceeds the screen');
+chk(stops[0] < stops[1] && stops[1] < stops[2], 'they ascend');
+
+T.snapSheet(0, true);
+chk(T.sheetPx === stops[0], 'collapsing really collapses it');
+const panelEl = document.getElementById('panel');
+console.log('   --sheet = ' + panelEl.style.getPropertyValue('--sheet'));
+chk(panelEl.style.getPropertyValue('--sheet') === stops[0] + 'px', 'and the style follows');
+T.snapSheet(2, true);
+chk(T.sheetPx === stops[2], 'and it opens again');
+chk(T.nearestStop(stops[1] + 10) === 1, 'a slow drag lands on the nearest stop');
+T.snapSheet(9, true);
+chk(T.sheetIdx === 2, 'it cannot be pushed past the top');
+T.snapSheet(-4, true);
+chk(T.sheetIdx === 0, 'nor below the peek');
+
+console.log('\n── flicking it');
+const pd = y => ({ clientY:y, button:0, pointerId:1, currentTarget:{setPointerCapture(){}} });
+T.snapSheet(1, true);
+T.sheetDown(pd(400));
+T.sheetMove({ clientY:380, preventDefault(){} });
+T.sheetUp({ clientY:300 });                        // fast upward flick
+console.log('   after an upward flick: stop ' + T.sheetIdx);
+chk(T.sheetIdx === 2, 'a flick up carries past the nearest stop to the next one');
+T.sheetDown(pd(300));
+T.sheetMove({ clientY:340, preventDefault(){} });
+T.sheetUp({ clientY:420 });                        // fast downward flick
+console.log('   after a downward flick: stop ' + T.sheetIdx);
+chk(T.sheetIdx === 1, 'and a flick down steps back');
+
+console.log('\n── the map is framed in the part you can see');
+T.snapSheet(0, true);
+const low = T.sheetPad().bottom;
+T.snapSheet(2, true);
+const high = T.sheetPad().bottom;
+console.log('   bottom padding: peek ' + low + ' · full ' + high);
+chk(high > low, 'a taller sheet pushes the route further up the map');
+chk(high <= Math.round(innerHeight * 0.52), 'but never so far that the route has nowhere to go');
+globalThis.__phone = false;
+globalThis.innerHeight = 800;
+chk(T.sheetPad().bottom === 70, 'on a desktop the padding is the plain one');
 
 console.log('\nhosts: ' + [...new Set(seen)].join('\n       '));
 console.log(ok ? '\nALL CHECKS PASSED' : '\nSOME CHECKS FAILED');

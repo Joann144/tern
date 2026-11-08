@@ -46,6 +46,7 @@ svg{width:18px;height:18px;flex:none}
   background:var(--surface);border-right:1px solid var(--line);box-shadow:var(--shadow);
   transition:transform .3s var(--ease)}
 #panel.hid{transform:translateX(calc(-1 * var(--pw)))}
+#grab{display:none}
 #brand{display:flex;align-items:center;gap:11px;padding:20px 20px 16px}
 #brand .mark{width:28px;height:28px;border-radius:var(--r-sm);background:var(--accent);
   color:#fff;display:grid;place-items:center}
@@ -340,17 +341,41 @@ html[data-theme="light"] #whenInput{color-scheme:light}
 /* ── mobile ─────────────────────────────────────────────── */
 @media (max-width:760px){
   :root{--pw:100%}
-  #panel{top:auto;left:0;right:0;bottom:0;height:min(74vh,580px);
-    border-right:0;border-top:1px solid var(--line);border-radius:14px 14px 0 0;
-    padding-bottom:env(safe-area-inset-bottom)}
-  #panel.hid{transform:translateY(calc(100% - 158px))}
+  /* A sheet you can actually move: drag the handle or the header, flick it,
+     or tap the map to get the map back. */
+  #panel{
+    top:auto;left:0;right:0;bottom:0;
+    height:var(--sheet-full,88vh);
+    width:auto;
+    border-right:0;border-top:1px solid var(--line);
+    border-radius:18px 18px 0 0;
+    transform:translateY(calc(var(--sheet-full,88vh) - var(--sheet,55vh)));
+    transition:transform .36s cubic-bezier(.22,1,.36,1);
+    will-change:transform;
+  }
+  #panel.dragging{transition:none}
+  #panel.hid{transform:translateY(100%)}
   #panelToggle{display:none}
-  #brand{padding:16px 18px 12px}
-  #planner{padding:0 18px 12px}
+
+  #grab{display:block;padding:9px 0 3px;cursor:grab;touch-action:none;flex:none}
+  #grab i{display:block;width:38px;height:4px;margin:0 auto;border-radius:4px;background:var(--line2)}
+  #panel.dragging #grab{cursor:grabbing}
+  #brand{padding:6px 18px 14px;touch-action:none}
+  #planner{padding:0 18px calc(14px + env(safe-area-inset-bottom))}
   #gpsbar{margin:0 18px 14px}
+  #results{touch-action:pan-y;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  #suggest{max-height:38vh}
+
   #tools{top:14px;right:14px}
   #scalebox{bottom:auto;top:14px;left:14px;right:auto}
-  #navBar{bottom:auto;top:116px}
-  #recentre{bottom:auto;top:236px}
-  #arrived{bottom:auto;top:116px}
+  #credit{display:none}
+
+  #navBar{bottom:auto;top:auto;bottom:calc(14px + env(safe-area-inset-bottom))}
+  #navCard{top:14px}
+  #navThen{top:112px}
+  #recentre{bottom:auto;top:174px}
+  #arrived{bottom:calc(14px + env(safe-area-inset-bottom))}
+}
+@media (max-width:760px) and (prefers-reduced-motion:reduce){
+  #panel{transition:none}
 }

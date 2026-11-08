@@ -654,7 +654,8 @@ async function planAll(){
       etaCache[m] = res[0] ? res[0].duration : null;
       setTab(m, res[0] ? fmtShort(res[0].duration) : '—');
       if(m === mode){ options = res; current = res[0]; renderOptions(); paintRoute(current); fitRoute(current);
-        refreshDepartures(current); loadSignals(current); }
+        refreshDepartures(current); loadSignals(current);
+        if(isPhone() && sheetIdx < 1) snapSheet(1); }
     }catch(e){
       if(token !== planToken) return;
       etaCache[m] = null;
@@ -861,8 +862,11 @@ function fitRoute(it){
   }));
   if(!any) return;
   const wide = innerWidth >= 760;
-  map.fitBounds([[mnx,mny],[mxx,mxy]], { duration:800, pitch:0,
-    padding:{ top:70, right:60, bottom: wide ? 60 : Math.round(innerHeight*0.5), left: wide ? 432 : 40 } });
+  // frame the route in the map you can actually see, not behind the sheet
+  const pad = wide
+    ? { top:70, right:60, bottom:60, left:432 }
+    : sheetPad();
+  map.fitBounds([[mnx,mny],[mxx,mxy]], { duration:800, pitch:0, padding:pad });
 }
 const ICON = {
   WALK:'<path d="M13 4.2a1.6 1.6 0 100-.1zM11 21l2-6-2.5-2.5L9.5 9 13 7.5l3 2.5 2.5 1M10.5 12.5L7 15l-1 6"/>',
@@ -1010,7 +1014,15 @@ function hideSug(){ $('suggest').hidden = true; sugList = []; sugSel = -1; }
 function choose(r){ if(!r) return; hideSug(); setPlace(sugSlot, r); }
 
 /* ── map interaction ──────────────────────────────────────── */
+function sheetPad(){
+  if(!isPhone()) return { top:70, bottom:70, left:70, right:70 };
+  const vis = sheetPx || sheetStops()[sheetIdx];
+  return { top:70, left:40, right:40,
+    bottom: Math.min(Math.round(window.innerHeight * 0.52), vis + 30) };
+}
 function wireMap(){
+  // reaching for the map means you want to see it
+  map.on('dragstart', () => { if(isPhone() && sheetIdx > 0 && !sheetDrag) snapSheet(0, true); });
   map.on('click', async e => {
     if(pickingStart){
       pickingStart = false;
@@ -1815,6 +1827,83 @@ document.querySelectorAll('.mode').forEach(el => el.addEventListener('click', as
 document.querySelector('.mode[data-mode="' + mode + '"]').classList.add('on');
 
 $('panelToggle').onclick = () => $('panel').classList.toggle('hid');
+
+/* ── the mobile sheet ─────────────────────────────────────────
+   A panel you cannot move is a panel that has taken your screen.
+   Three resting heights: a peek that leaves the map usable with the
+   search still in reach, a middle for reading routes, and full. */
+const SHEET_PEEK = 176;
+let sheetIdx = 1, sheetPx = 0, sheetDrag = null;
+const isPhone = () => window.matchMedia('(max-width:760px)').matches;
+function sheetStops(){
+  const h = window.innerHeight;
+  const full = Math.round(h * 0.88);
+  return [Math.min(SHEET_PEEK, full), Math.round(h * 0.55), full];
+}
+function applySheet(px){
+  sheetPx = px;
+  $('panel').style.setProperty('--sheet', px + 'px');
+}
+function snapSheet(i, quiet){
+  const stops = sheetStops();
+  sheetIdx = Math.max(0, Math.min(stops.length - 1, i));
+  applySheet(stops[sheetIdx]);
+  if(!quiet && map) setTimeout(() => { try{ map.resize(); }catch(e){} }, 380);
+}
+function nearestStop(px){
+  const stops = sheetStops();
+  let best = 0, bd = Infinity;
+  stops.forEach((v, i) => { const d = Math.abs(v - px); if(d < bd){ bd = d; best = i; } });
+  return best;
+}
+function layoutSheet(){
+  const stops = sheetStops();
+  $('panel').style.setProperty('--sheet-full', stops[2] + 'px');
+  if(isPhone()) applySheet(stops[Math.max(0, Math.min(2, sheetIdx))]);
+}
+function sheetDown(e){
+  if(!isPhone() || e.button) return;
+  sheetDrag = { y:e.clientY, from:sheetPx || sheetStops()[sheetIdx], t:Date.now(), moved:false };
+  $('panel').classList.add('dragging');
+  try{ e.currentTarget.setPointerCapture(e.pointerId); }catch(err){}
+}
+function sheetMove(e){
+  if(!sheetDrag) return;
+  const dy = sheetDrag.y - e.clientY;            // dragging up grows the sheet
+  if(Math.abs(dy) > 3) sheetDrag.moved = true;
+  const stops = sheetStops();
+  let v = sheetDrag.from + dy;
+  if(v > stops[2]) v = stops[2] + (v - stops[2]) * 0.22;   // resist past the top
+  if(v < 56) v = 56 + (v - 56) * 0.4;
+  applySheet(v);
+  e.preventDefault();
+}
+function sheetUp(e){
+  if(!sheetDrag) return;
+  const dy = sheetDrag.y - e.clientY;
+  const dt = Math.max(1, Date.now() - sheetDrag.t);
+  const vel = dy / dt;                            // px per ms, up positive
+  const landed = sheetDrag.from + dy;
+  sheetDrag = null;
+  $('panel').classList.remove('dragging');
+  if(Math.abs(vel) > 0.45){                       // a flick carries to the next stop
+    snapSheet(nearestStop(landed) + (vel > 0 ? 1 : -1));
+  } else {
+    snapSheet(nearestStop(landed));
+  }
+}
+['grab','brand'].forEach(id => {
+  const el = $(id);
+  if(!el) return;
+  el.addEventListener('pointerdown', sheetDown);
+  el.addEventListener('pointermove', sheetMove);
+  el.addEventListener('pointerup', sheetUp);
+  el.addEventListener('pointercancel', sheetUp);
+});
+$('grab').addEventListener('click', () => { if(isPhone()) snapSheet(sheetIdx >= 2 ? 0 : sheetIdx + 1); });
+window.addEventListener('resize', layoutSheet);
+layoutSheet();
+
 $('themeBtn').onclick = () => {
   theme = theme === 'light' ? 'dark' : 'light';
   store.set('tern.theme', theme);

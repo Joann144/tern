@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Tern</title>
 <meta name="description" content="Open map and trip planner. Drive, transit, bike and walk directions on OpenStreetMap data.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tern">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
@@ -60,6 +66,7 @@ svg{width:18px;height:18px;flex:none}
   background:var(--surface);border-right:1px solid var(--line);box-shadow:var(--shadow);
   transition:transform .3s var(--ease)}
 #panel.hid{transform:translateX(calc(-1 * var(--pw)))}
+#grab{display:none}
 #brand{display:flex;align-items:center;gap:11px;padding:20px 20px 16px}
 #brand .mark{width:28px;height:28px;border-radius:var(--r-sm);background:var(--accent);
   color:#fff;display:grid;place-items:center}
@@ -354,19 +361,43 @@ html[data-theme="light"] #whenInput{color-scheme:light}
 /* ── mobile ─────────────────────────────────────────────── */
 @media (max-width:760px){
   :root{--pw:100%}
-  #panel{top:auto;left:0;right:0;bottom:0;height:min(74vh,580px);
-    border-right:0;border-top:1px solid var(--line);border-radius:14px 14px 0 0;
-    padding-bottom:env(safe-area-inset-bottom)}
-  #panel.hid{transform:translateY(calc(100% - 158px))}
+  /* A sheet you can actually move: drag the handle or the header, flick it,
+     or tap the map to get the map back. */
+  #panel{
+    top:auto;left:0;right:0;bottom:0;
+    height:var(--sheet-full,88vh);
+    width:auto;
+    border-right:0;border-top:1px solid var(--line);
+    border-radius:18px 18px 0 0;
+    transform:translateY(calc(var(--sheet-full,88vh) - var(--sheet,55vh)));
+    transition:transform .36s cubic-bezier(.22,1,.36,1);
+    will-change:transform;
+  }
+  #panel.dragging{transition:none}
+  #panel.hid{transform:translateY(100%)}
   #panelToggle{display:none}
-  #brand{padding:16px 18px 12px}
-  #planner{padding:0 18px 12px}
+
+  #grab{display:block;padding:9px 0 3px;cursor:grab;touch-action:none;flex:none}
+  #grab i{display:block;width:38px;height:4px;margin:0 auto;border-radius:4px;background:var(--line2)}
+  #panel.dragging #grab{cursor:grabbing}
+  #brand{padding:6px 18px 14px;touch-action:none}
+  #planner{padding:0 18px calc(14px + env(safe-area-inset-bottom))}
   #gpsbar{margin:0 18px 14px}
+  #results{touch-action:pan-y;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  #suggest{max-height:38vh}
+
   #tools{top:14px;right:14px}
   #scalebox{bottom:auto;top:14px;left:14px;right:auto}
-  #navBar{bottom:auto;top:116px}
-  #recentre{bottom:auto;top:236px}
-  #arrived{bottom:auto;top:116px}
+  #credit{display:none}
+
+  #navBar{bottom:auto;top:auto;bottom:calc(14px + env(safe-area-inset-bottom))}
+  #navCard{top:14px}
+  #navThen{top:112px}
+  #recentre{bottom:auto;top:174px}
+  #arrived{bottom:calc(14px + env(safe-area-inset-bottom))}
+}
+@media (max-width:760px) and (prefers-reduced-motion:reduce){
+  #panel{transition:none}
 }
 </style>
 </head>
@@ -376,6 +407,7 @@ html[data-theme="light"] #whenInput{color-scheme:light}
 
 <!-- ───────────────── trip planner ───────────────── -->
 <aside id="panel">
+  <div id="grab" aria-hidden="true"><i></i></div>
   <header id="brand">
     <div class="mark">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l6-3 6 3 6-3v13l-6 3-6-3-6 3V7z"/><path d="M9 4v13M15 7v13"/></svg>
@@ -1275,7 +1307,8 @@ async function planAll(){
       etaCache[m] = res[0] ? res[0].duration : null;
       setTab(m, res[0] ? fmtShort(res[0].duration) : '—');
       if(m === mode){ options = res; current = res[0]; renderOptions(); paintRoute(current); fitRoute(current);
-        refreshDepartures(current); loadSignals(current); }
+        refreshDepartures(current); loadSignals(current);
+        if(isPhone() && sheetIdx < 1) snapSheet(1); }
     }catch(e){
       if(token !== planToken) return;
       etaCache[m] = null;
@@ -1482,8 +1515,11 @@ function fitRoute(it){
   }));
   if(!any) return;
   const wide = innerWidth >= 760;
-  map.fitBounds([[mnx,mny],[mxx,mxy]], { duration:800, pitch:0,
-    padding:{ top:70, right:60, bottom: wide ? 60 : Math.round(innerHeight*0.5), left: wide ? 432 : 40 } });
+  // frame the route in the map you can actually see, not behind the sheet
+  const pad = wide
+    ? { top:70, right:60, bottom:60, left:432 }
+    : sheetPad();
+  map.fitBounds([[mnx,mny],[mxx,mxy]], { duration:800, pitch:0, padding:pad });
 }
 const ICON = {
   WALK:'<path d="M13 4.2a1.6 1.6 0 100-.1zM11 21l2-6-2.5-2.5L9.5 9 13 7.5l3 2.5 2.5 1M10.5 12.5L7 15l-1 6"/>',
@@ -1631,7 +1667,15 @@ function hideSug(){ $('suggest').hidden = true; sugList = []; sugSel = -1; }
 function choose(r){ if(!r) return; hideSug(); setPlace(sugSlot, r); }
 
 /* ── map interaction ──────────────────────────────────────── */
+function sheetPad(){
+  if(!isPhone()) return { top:70, bottom:70, left:70, right:70 };
+  const vis = sheetPx || sheetStops()[sheetIdx];
+  return { top:70, left:40, right:40,
+    bottom: Math.min(Math.round(window.innerHeight * 0.52), vis + 30) };
+}
 function wireMap(){
+  // reaching for the map means you want to see it
+  map.on('dragstart', () => { if(isPhone() && sheetIdx > 0 && !sheetDrag) snapSheet(0, true); });
   map.on('click', async e => {
     if(pickingStart){
       pickingStart = false;
@@ -2436,6 +2480,83 @@ document.querySelectorAll('.mode').forEach(el => el.addEventListener('click', as
 document.querySelector('.mode[data-mode="' + mode + '"]').classList.add('on');
 
 $('panelToggle').onclick = () => $('panel').classList.toggle('hid');
+
+/* ── the mobile sheet ─────────────────────────────────────────
+   A panel you cannot move is a panel that has taken your screen.
+   Three resting heights: a peek that leaves the map usable with the
+   search still in reach, a middle for reading routes, and full. */
+const SHEET_PEEK = 176;
+let sheetIdx = 1, sheetPx = 0, sheetDrag = null;
+const isPhone = () => window.matchMedia('(max-width:760px)').matches;
+function sheetStops(){
+  const h = window.innerHeight;
+  const full = Math.round(h * 0.88);
+  return [Math.min(SHEET_PEEK, full), Math.round(h * 0.55), full];
+}
+function applySheet(px){
+  sheetPx = px;
+  $('panel').style.setProperty('--sheet', px + 'px');
+}
+function snapSheet(i, quiet){
+  const stops = sheetStops();
+  sheetIdx = Math.max(0, Math.min(stops.length - 1, i));
+  applySheet(stops[sheetIdx]);
+  if(!quiet && map) setTimeout(() => { try{ map.resize(); }catch(e){} }, 380);
+}
+function nearestStop(px){
+  const stops = sheetStops();
+  let best = 0, bd = Infinity;
+  stops.forEach((v, i) => { const d = Math.abs(v - px); if(d < bd){ bd = d; best = i; } });
+  return best;
+}
+function layoutSheet(){
+  const stops = sheetStops();
+  $('panel').style.setProperty('--sheet-full', stops[2] + 'px');
+  if(isPhone()) applySheet(stops[Math.max(0, Math.min(2, sheetIdx))]);
+}
+function sheetDown(e){
+  if(!isPhone() || e.button) return;
+  sheetDrag = { y:e.clientY, from:sheetPx || sheetStops()[sheetIdx], t:Date.now(), moved:false };
+  $('panel').classList.add('dragging');
+  try{ e.currentTarget.setPointerCapture(e.pointerId); }catch(err){}
+}
+function sheetMove(e){
+  if(!sheetDrag) return;
+  const dy = sheetDrag.y - e.clientY;            // dragging up grows the sheet
+  if(Math.abs(dy) > 3) sheetDrag.moved = true;
+  const stops = sheetStops();
+  let v = sheetDrag.from + dy;
+  if(v > stops[2]) v = stops[2] + (v - stops[2]) * 0.22;   // resist past the top
+  if(v < 56) v = 56 + (v - 56) * 0.4;
+  applySheet(v);
+  e.preventDefault();
+}
+function sheetUp(e){
+  if(!sheetDrag) return;
+  const dy = sheetDrag.y - e.clientY;
+  const dt = Math.max(1, Date.now() - sheetDrag.t);
+  const vel = dy / dt;                            // px per ms, up positive
+  const landed = sheetDrag.from + dy;
+  sheetDrag = null;
+  $('panel').classList.remove('dragging');
+  if(Math.abs(vel) > 0.45){                       // a flick carries to the next stop
+    snapSheet(nearestStop(landed) + (vel > 0 ? 1 : -1));
+  } else {
+    snapSheet(nearestStop(landed));
+  }
+}
+['grab','brand'].forEach(id => {
+  const el = $(id);
+  if(!el) return;
+  el.addEventListener('pointerdown', sheetDown);
+  el.addEventListener('pointermove', sheetMove);
+  el.addEventListener('pointerup', sheetUp);
+  el.addEventListener('pointercancel', sheetUp);
+});
+$('grab').addEventListener('click', () => { if(isPhone()) snapSheet(sheetIdx >= 2 ? 0 : sheetIdx + 1); });
+window.addEventListener('resize', layoutSheet);
+layoutSheet();
+
 $('themeBtn').onclick = () => {
   theme = theme === 'light' ? 'dark' : 'light';
   store.set('tern.theme', theme);
