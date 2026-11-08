@@ -1875,7 +1875,10 @@ function snapSheet(i, quiet){
   const stops = sheetStops();
   sheetIdx = Math.max(0, Math.min(stops.length - 1, i));
   applySheet(stops[sheetIdx]);
-  if(!quiet && map) setTimeout(() => { try{ map.resize(); }catch(e){} }, 380);
+  // the strip the sheet uncovers has to be redrawn, not left as it was
+  if(map) setTimeout(() => {
+    try{ map.resize(); if(map.triggerRepaint) map.triggerRepaint(); }catch(e){}
+  }, quiet ? 40 : 380);
 }
 function nearestStop(px){
   const stops = sheetStops();
